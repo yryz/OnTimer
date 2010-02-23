@@ -1,0 +1,34 @@
+220 relay.cmail.sogou.com ESMTP Postfix
+
+250 relay.cmail.sogou.com
+SMTP Postfix
+
+334 VXNlcm5hbWU6
+gou.com
+SMTP Postfix
+
+334 UGFzc3dvcmQ6
+gou.com
+SMTP Postfix
+
+235 2.0.0 Authentication successful
+ix
+
+250 2.1.0 Ok
+entication successful
+ix
+
+250 2.1.5 Ok
+entication successful
+ix
+
+354 End data with <CR><LF>.<CR><LF>
+ix
+
+250 2.0.0 Ok: queued as 17EF655C9E3
+ix
+
+221 2.0.0 Bye
+ueued as 17EF655C9E3
+ix
+
