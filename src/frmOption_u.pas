@@ -1,4 +1,4 @@
-unit SetUnit;
+unit frmOption_u;
 
 interface
 
@@ -7,7 +7,7 @@ uses
   StdCtrls, Controls;
 
 type
-  TFSet = class(TForm)
+  TfrmOption = class(TForm)
     grpSBox: TGroupBox;
     InfoLabel2: TLabel;
     InfoLabel3: TLabel;
@@ -26,26 +26,22 @@ type
   end;
 
 var
-  FSet: TFSet;
+  frmOption         : TfrmOption;
 
 implementation
 uses
-  uPublic, FOnTime;
+  frmOnTime_u;
 {$R *.dfm}
 
-procedure TFSet.btn1Click(Sender: TObject);
+procedure TfrmOption.btn1Click(Sender: TObject);
 begin
-  SetData.smtpserver := edtSer.Text;
-  SetData.smtpuser := edtUser.Text;
 
-  if not (edtPass.Text = '¹þ¹þ!') then  SetData.smtppass := edtPass.Text;
   Close;
 end;
 
-procedure TFSet.edt4KeyPress(Sender: TObject; var Key: Char);
+procedure TfrmOption.edt4KeyPress(Sender: TObject; var Key: Char);
 begin
   if word(Key) = VK_RETURN then Btn1.Click;
 end;
 
 end.
-

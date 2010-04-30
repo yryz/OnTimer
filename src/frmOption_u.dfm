@@ -1,4 +1,4 @@
-object FSet: TFSet
+object frmOption: TfrmOption
   Left = 649
   Top = 179
   BorderIcons = [biSystemMenu]
@@ -51,7 +51,7 @@ object FSet: TFSet
     object InfoLabel1: TLabel
       Left = 216
       Top = 24
-      Width = 113
+      Width = 77
       Height = 13
       Caption = #22914':smtp.qq.com'
     end

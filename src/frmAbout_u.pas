@@ -1,12 +1,13 @@
-unit AboutUtils;
+unit frmAbout_u;
 
 interface
 
 uses
-  Windows, Messages, Forms, ShellAPI, Controls, StdCtrls, Classes, ExtCtrls;
+  Windows, Messages, Forms, ShellAPI, Controls, StdCtrls, Classes, ExtCtrls,
+  Graphics;
 
 type
-  TFAbout = class(TForm)
+  TfrmAbout = class(TForm)
     pnl1: TPanel;
     InfoLabelL3: TLabel;
     InfoLabelUrl: TLabel;
@@ -14,33 +15,35 @@ type
     InfoLabelL2: TLabel;
     InfoLabelL1: TLabel;
     InfoLabelZZ: TLabel;
+    lbl1: TLabel;
+    img1: TImage;
+    lblVer: TLabel;
     procedure InfoLabelUrlClick(Sender: TObject);
     procedure InfoLabelQQClick(Sender: TObject);
   private
-    { Private declarations }
+
   public
-    { Public declarations }
+
   end;
 
 resourcestring
-  Tencent = 'tencent://message?uin=';
+  Tencent           = 'tencent://message?uin=';
 
 var
-  FAbout: TFAbout;
+  frmAbout          : TfrmAbout;
 
 implementation
 
 {$R *.dfm}
 
-procedure TFAbout.InfoLabelUrlClick(Sender: TObject);
+procedure TfrmAbout.InfoLabelUrlClick(Sender: TObject);
 begin
-  ShellExecute(Handle, nil, PChar(InfoLabelUrl.Caption), nil, nil, SW_SHOW);
+  ShellExecute(Handle, nil, PChar(InfoLabelUrl.Caption + '?form=OnTimer ' + lblVer.Caption), nil, nil, SW_SHOW);
 end;
 
-procedure TFAbout.InfoLabelQQClick(Sender: TObject);
+procedure TfrmAbout.InfoLabelQQClick(Sender: TObject);
 begin
   ShellExecute(Handle, nil, PChar(Tencent + InfoLabelQQ.Caption), nil, nil, SW_SHOW);
 end;
 
 end.
-

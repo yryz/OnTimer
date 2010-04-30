@@ -1,9 +1,9 @@
-object OnTimer: TOnTimer
-  Left = 348
-  Top = 305
-  Width = 467
-  Height = 240
-  Caption = #20219#21153#35745#21010
+object frmOnTime: TfrmOnTime
+  Left = 339
+  Top = 247
+  Width = 582
+  Height = 294
+  Caption = 'HOU'#20219#21153#35745#21010
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -17,26 +17,36 @@ object OnTimer: TOnTimer
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13
-  object ListView1: TListView
+  object lvTask: TListView
+    Tag = 2
     Left = 0
     Top = 0
-    Width = 459
-    Height = 206
+    Width = 574
+    Height = 260
     Align = alClient
     BorderStyle = bsNone
+    Checkboxes = True
     Color = clWhite
     Columns = <
       item
         Caption = #26102#38388
-        Width = 128
+        Width = 150
       end
       item
         Caption = #31867#22411
-        Width = 60
+        Width = 66
       end
       item
         AutoSize = True
         Caption = #20869#23481
+      end
+      item
+        Caption = #21442#25968
+        Width = 88
+      end
+      item
+        Alignment = taCenter
+        Caption = #21097#20313
       end>
     ColumnClick = False
     GridLines = True
@@ -45,52 +55,68 @@ object OnTimer: TOnTimer
     SmallImages = ImageList1
     TabOrder = 0
     ViewStyle = vsReport
-    OnDblClick = N5Click
   end
-  object Timer1: TTimer
-    OnTimer = Timer1Timer
-    Left = 328
-    Top = 56
-  end
-  object PopMenuA: TPopupMenu
-    Left = 328
-    Top = 88
-    object N2: TMenuItem
-      Caption = #20851#20110
-      OnClick = N2Click
-    end
-    object N6: TMenuItem
-      Caption = '-'
-    end
-    object N3: TMenuItem
-      Caption = #28155#21152
-      OnClick = N3Click
-    end
-    object N5: TMenuItem
-      Caption = #32534#36753
-      OnClick = N5Click
-    end
-    object N4: TMenuItem
-      Caption = #21024#38500
-      OnClick = N4Click
-    end
-    object N7: TMenuItem
-      Caption = '-'
-    end
-    object N1: TMenuItem
-      Caption = #36864#20986
-      OnClick = N1Click
-    end
-  end
-  object Timer2: TTimer
-    Interval = 60000
-    OnTimer = Timer2Timer
+  object tmrOntimer: TTimer
+    OnTimer = tmrOntimerTimer
     Left = 328
     Top = 120
   end
-  object ImageList1: TImageList
+  object PopMenuA: TPopupMenu
+    OnPopup = PopMenuAPopup
     Left = 328
-    Top = 152
+    Top = 64
+    object mniAbout: TMenuItem
+      Caption = #20851#20110
+      OnClick = mniAboutClick
+    end
+    object N0: TMenuItem
+      Caption = '-'
+    end
+    object mniAdd: TMenuItem
+      Tag = 1
+      Caption = #28155#21152
+      OnClick = mniAddClick
+    end
+    object mniEdit: TMenuItem
+      Tag = 2
+      Caption = #32534#36753
+      OnClick = mniEditClick
+    end
+    object mniDel: TMenuItem
+      Tag = 3
+      Caption = #21024#38500
+      OnClick = mniDelClick
+    end
+    object mniExec: TMenuItem
+      Tag = 4
+      Caption = #25191#34892
+      OnClick = mniExecClick
+    end
+    object N1: TMenuItem
+      Caption = '-'
+    end
+    object mniOption: TMenuItem
+      Tag = 5
+      Caption = #35774#32622
+      OnClick = mniOptionClick
+    end
+    object N2: TMenuItem
+      Caption = '-'
+    end
+    object mniExit: TMenuItem
+      Tag = 6
+      Caption = #36864#20986
+    end
+  end
+  object tmrMem: TTimer
+    Interval = 60000
+    OnTimer = tmrMemTimer
+    Left = 376
+    Top = 120
+  end
+  object ImageList1: TImageList
+    Left = 216
+    Top = 56
     Bitmap = {
       494C010102000400040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
@@ -230,15 +256,5 @@ object OnTimer: TOnTimer
       C003C00300000000E007E00700000000F00FF00F00000000F81FF81F00000000
       FFFFFFFF00000000FFFFFFFF0000000000000000000000000000000000000000
       000000000000}
-  end
-  object Timer3: TTimer
-    Interval = 1
-    OnTimer = Timer3Timer
-    Left = 328
-    Top = 184
-  end
-  object XPManifest1: TXPManifest
-    Left = 328
-    Top = 24
   end
 end
