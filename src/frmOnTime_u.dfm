@@ -1,8 +1,8 @@
 object frmOnTime: TfrmOnTime
-  Left = 339
-  Top = 247
+  Left = 395
+  Top = 230
   Width = 582
-  Height = 294
+  Height = 308
   Caption = 'HOU'#20219#21153#35745#21010
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -13,7 +13,7 @@ object frmOnTime: TfrmOnTime
   OldCreateOrder = False
   PopupMenu = PopMenuA
   Position = poScreenCenter
-  OnCloseQuery = FormCloseQuery
+  OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13
@@ -22,7 +22,7 @@ object frmOnTime: TfrmOnTime
     Left = 0
     Top = 0
     Width = 574
-    Height = 260
+    Height = 274
     Align = alClient
     BorderStyle = bsNone
     Checkboxes = True
@@ -34,7 +34,7 @@ object frmOnTime: TfrmOnTime
       end
       item
         Caption = #31867#22411
-        Width = 66
+        Width = 68
       end
       item
         AutoSize = True
@@ -55,8 +55,10 @@ object frmOnTime: TfrmOnTime
     SmallImages = ImageList1
     TabOrder = 0
     ViewStyle = vsReport
+    OnClick = lvTaskClick
   end
   object tmrOntimer: TTimer
+    Enabled = False
     OnTimer = tmrOntimerTimer
     Left = 328
     Top = 120
@@ -70,6 +72,14 @@ object frmOnTime: TfrmOnTime
       OnClick = mniAboutClick
     end
     object N0: TMenuItem
+      Caption = '-'
+    end
+    object mniExec: TMenuItem
+      Tag = 4
+      Caption = #25191#34892
+      OnClick = mniExecClick
+    end
+    object N3: TMenuItem
       Caption = '-'
     end
     object mniAdd: TMenuItem
@@ -87,11 +97,6 @@ object frmOnTime: TfrmOnTime
       Caption = #21024#38500
       OnClick = mniDelClick
     end
-    object mniExec: TMenuItem
-      Tag = 4
-      Caption = #25191#34892
-      OnClick = mniExecClick
-    end
     object N1: TMenuItem
       Caption = '-'
     end
@@ -106,6 +111,7 @@ object frmOnTime: TfrmOnTime
     object mniExit: TMenuItem
       Tag = 6
       Caption = #36864#20986
+      OnClick = mniExitClick
     end
   end
   object tmrMem: TTimer
@@ -115,10 +121,10 @@ object frmOnTime: TfrmOnTime
     Top = 120
   end
   object ImageList1: TImageList
-    Left = 216
-    Top = 56
+    Left = 248
+    Top = 64
     Bitmap = {
-      494C010102000400040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000300040010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

@@ -3,31 +3,58 @@ unit TaskMgr_u;
 interface
 uses
   Windows, SysUtils, Classes, Graphics, ExtCtrls, ComCtrls,
-  ShellAPI, TlHelp32, UrlMon, WinSock;
+  ShellAPI, SQLite3, SQLiteTable3;
 
 type
   TTaskType = (ttExec, ttParamExec, ttDownExec, ttKillProcess, ttCmdExec,
-    ttSendKey, ttSendEmail, ttWakeUp, ttMsgTip, ttShutdown, ttReboot, ttLogout);
+    ttSendKey, ttSendEmail, ttWakeUp, ttMsgTip, ttShutdownPC, ttRebootPC,
+    ttLogoutPC, ttLockPC);
 const
+  ONTIME_DB         = 'OnTime.db';
+  ONTIME_DB_KEY     = '';
   TASK_TYPE_STR     : array[TTaskType] of string[8] =
     ('普通运行', '参数运行', '下载运行', '结束进程', '执行DOS', '模拟按键',
-    '发送邮件', '网络唤醒', '消息提示', '关机', '重启', '注销');
-  INVALID_DATE      = 1;
+    '发送邮件', '网络唤醒', '消息提示', '关闭系统', '重启系统', '注销登陆',
+    '锁定系统');
+
+  { OPTION SQL }
+  SQL_CREATE_OPTION = 'CREATE TABLE option(smtpserver TEXT,smtpport INTEGER,'
+    + 'smtpuser TEXT,smtppass TEXT)';
+  SQL_INSERT_OPTION = 'INSERT INTO option(smtpserver,smtpport,smtpuser,smtppass'
+    + ') VALUES("smtp.126.com",25,"ontimer","")';
+  SQL_UPDATE_OPTION = 'UPDATE option SET smtpserver=?,smtpport=?,smtpuser=?'
+    + ',smtppass=?';
+  { TASK SQL }
+  SQL_CREATE_TASKLIST = 'CREATE TABLE tasklist(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,'
+    + 'checked INTEGER,tasktype INTEGER,timetype INTEGER,time DOUBLE,content TEXT,'
+    + 'param TEXT,execnum INTEGER)';
+  SQL_SELECT_OPTION = 'SELECT * FROM option';
+  SQL_SELECT_TASKLIST = 'SELECT * FROM tasklist';
+  SQL_INSERT_TASK   = 'INSERT INTO tasklist(checked,tasktype,timetype,time,'
+    + 'content,param,execnum) VALUES(?,?,?,?,?,?,?)';
+  SQL_UPDATE_TASK   = 'UPDATE tasklist SET checked=?,tasktype=?,timetype=?,time=?,'
+    + 'content=?,param=?,execnum=? WHERE id=';
+  SQL_UPDATE_TASK2  = 'UPDATE tasklist SET checked=? WHERE id=';
+  SQL_DELETE_TASK   = 'DELETE FROM tasklist WHERE id=';
+
+type
+  TTimeType = (ttDateTime, ttTime, ttLoop);
 
 type
   TTaskMgr = class;
 
   TTask = class(TListItem)              //TListView中添加此Item
   private
-    FExecNum: DWORD;                    //可执行次数，< 1 停止
+    FId: Integer;
+    FExecNum: DWORD;                    //可执行次数
     FTaskType: TTaskType;
-    FLoopTime: DWORD;                   //循环间隔
-    FTimeStamp: TTimeStamp;             //IsLoop任务初始时间，否则任务开始时间
+    FTimeType: TTimeType;               //记时类型
+    FLoopTime: Integer;                 //LOOP记时
+    FDateTime: TDateTime;               //设定时间值
     FParam: string;
     FContent: string;
-    procedure SetLoopTime(const Value: DWORD);
+    FLastChecked: Boolean;              //决定是否要把Checked状态写入数据库
     procedure SetContent(const Value: string);
-    procedure SetTimeStamp(const Value: TTimeStamp);
     procedure SetParam(const Value: string);
     procedure SetTaskType(const Value: TTaskType);
     procedure SetExecNum(const Value: DWORD);
@@ -35,52 +62,63 @@ type
     constructor Create(Items: TListItems);
     destructor Destroy; override;
     procedure Execute;
-    procedure ResetLoop;
-    function IsLoop: Boolean;
-    function IsTime: Boolean;
+    function DecLoop: Integer;          //调用一次，减一秒
+    procedure SetTime(timeType: TTimeType; Value: TDateTime);
   published
+    property Id: Integer read FId write FId;
     property ExecNum: DWORD read FExecNum write SetExecNum;
     property TaskType: TTaskType read FTaskType write SetTaskType;
-    property LoopTime: DWORD read FLoopTime write SetLoopTime; //任务自动改变
-    property TimeStamp: TTimeStamp read FTimeStamp write SetTimeStamp;
+    property TimeType: TTimeType read FTimeType;
+    property DateTime: TDateTime read FDateTime;
     property Param: string read FParam write SetParam;
     property Content: string read FContent write SetContent;
+    property LastChecked: Boolean read FLastChecked write FLastChecked;
   end;
 
   TTaskMgr = class
   private
     FItems: TListItems;
-    //设置
+    FTaskDB: TSQLiteDatabase;
+    procedure LoadTask;
   public
     constructor Create(lvTask: TListView);
     destructor Destroy; override;
-    function Add(taskType: TTaskType; execNum, loopTime: DWORD;
-      timeStamp: TTimeStamp; param, content: string): Integer;
+    function Make(bChecked: Boolean): TTask;
+    procedure Update(isAdd: Boolean; Task: TTask);
+    procedure UpdateCheckState(Task: TTask);
+    procedure UpdateOption;
     function DeleteSelected: Integer;
-    procedure OnTimer(dateTime: TTimeStamp);
-    procedure LoadTask;
-    procedure SaveTask;
+    procedure OnTimer(dateTime: TDateTime);
   end;
 
   TSMTPOption = record
-    Server: ShortString;
-    UserName: ShortString;
-    Password: ShortString;
+    Server: string;
+    Port: Word;
+    UserName: string;
+    Password: string;
   end;
 
 var
   g_SMTPOption      : TSMTPOption;
   g_TaskMgr         : TTaskMgr;
 
-procedure MsgTip(S: string);
-procedure SetPrivilege(pName: PChar);
-function KillTask(ExeFileName: string): Integer;
-procedure DownloadExec(sUrl: PChar);
-procedure SendMail(Task: TTask);
-procedure WakeUpPro(MacAddr: string);
+const
+  DOUBLE_MAGIC      = 6755399441055744.0; //Double + 1.5*2^52
+  MAX_LOOP_VALUE    = $3FFFFF;          //DOUBLE_MAGIC 只能处理这 23位
+
+function FloatToInt23(Value: double): Integer;
+
 implementation
 uses
-  sndkey32, MSNPopUp, SendMailAPI, FuncLib;
+  sndkey32, FuncLib, Proc_u, PopTooltip_u;
+
+function FloatToInt23(Value: double): Integer;
+var
+  d                 : Double;
+begin
+  d := Value + DOUBLE_MAGIC;
+  Result := PInteger(@d)^;
+end;
 
 { TTask }
 
@@ -111,8 +149,7 @@ begin
       WinExec(PChar(FContent), SW_SHOW);
     ttDownExec:
       CloseHandle(BeginThread(nil, 0, @DownloadExec, PChar(FContent), 0, dwThID));
-    ttKillProcess:
-      begin
+    ttKillProcess: begin
         SetPrivilege('SeDebugPrivilege');
         KillTask(PChar(FContent));
       end;
@@ -125,194 +162,48 @@ begin
     ttWakeUp:
       WakeUpPro(FContent);
     ttMsgTip:
-      MsgTip(FContent);
-    ttShutdown:
-      begin
+      TPopTooltip.ShowMsg(FContent,
+        ExtractFilePath(ParamStr(0)) + 'OnTime.jpg', 10 * 1000);
+    ttShutdownPC: begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_SHUTDOWN or EWX_FORCE, 0); {关机}
       end;
-    ttReboot:
-      begin
+    ttRebootPC: begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_REBOOT or EWX_FORCE, 0); {重启}
       end;
-    ttLogout:
-      begin
+    ttLogoutPC: begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_LOGOFF or EWX_FORCE, 0); {注销}
       end;
+    ttLockPC: LockWorkStation;
   end;
 
   ImageIndex := 1;
-  Dec(FExecNum);
-  SetExecNum(FExecNum);
-  if IsLoop then
-    if FExecNum <> 0 then ResetLoop;
+  if FExecNum > 0 then
+    SetExecNum(FExecNum - 1);
 end;
 
-procedure MsgTip(S: string);
-var
-  FM_MSNPopUp       : TMSNPopUp;
+function TTask.DecLoop;
 begin
-  FM_MSNPopUp := TMSNPopUp.Create(nil);
-  try
-    with FM_MSNPopUp do begin
-      Text := S;
-      Font.Name := '宋体';
-      Font.Size := 10;
-      Font.Color := $FF;
-      HoverFont.Name := '宋体';
-      HoverFont.Color := clred;
-      if FileExists('OnTime.bmp') then BackgroundImage.LoadFromFile('OnTime.bmp');
-      ShowPopUp;
-    end;
-  finally
-    if assigned(FM_MSNPopUp) then begin
-      FM_MSNPopUp := nil;
-      FM_MSNPopUp.Free;
-    end;
-  end;
+  Dec(FLoopTime);
+  Result := FLoopTime;
+  Caption := IntToStr(Result);
+  if Result <= 0 then
+    FLoopTime := FloatToInt23(FDateTime);
 end;
 
-{--------提升进程权限为DEBUG权限-------}
-
-procedure SetPrivilege(pName: PChar);
-var
-  OldTokenPrivileges, TokenPrivileges: TTokenPrivileges;
-  ReturnLength      : dword;
-  hToken            : THandle;
-  Luid              : int64;
+procedure TTask.SetTime;
 begin
-  OpenProcessToken(GetCurrentProcess, TOKEN_ADJUST_PRIVILEGES, hToken);
-  LookupPrivilegeValue(nil, pName, Luid);
-  TokenPrivileges.Privileges[0].Luid := Luid;
-  TokenPrivileges.PrivilegeCount := 1;
-  TokenPrivileges.Privileges[0].Attributes := 0;
-  AdjustTokenPrivileges(hToken, False, TokenPrivileges, SizeOf(TTokenPrivileges), OldTokenPrivileges, ReturnLength);
-  OldTokenPrivileges.Privileges[0].Luid := Luid;
-  OldTokenPrivileges.PrivilegeCount := 1;
-  OldTokenPrivileges.Privileges[0].Attributes := TokenPrivileges.Privileges[0].Attributes or SE_PRIVILEGE_ENABLED;
-  AdjustTokenPrivileges(hToken, False, OldTokenPrivileges, ReturnLength, PTokenPrivileges(nil)^, ReturnLength);
-end;
-
-{-----------Kill进程--------------}
-
-function KillTask(ExeFileName: string): integer;
-const
-  Proess_Terminate  = $0001;
-var
-  ContinueLoop      : BOOL;
-  FSnapshotHandle   : THandle;
-  FProcessEntry32   : TProcessEntry32;
-begin
-  result := 0;
-  FSnapshotHandle := CreateToolhelp32Snapshot(TH32CS_SnapProcess, 0); //获取进程列表
-  FProcessEntry32.dwSize := SizeOf(FProcessEntry32);
-  ContinueLoop := Process32First(FSnapshotHandle, FProcessEntry32);
-  while integer(ContinueLoop) <> 0 do begin
-    if ((UpperCase(ExtractFileName(FProcessEntry32.szExeFile)) = UpperCase(ExeFileName))
-      or (UpperCase(FProcessEntry32.szExeFile) = UpperCase(ExeFileName))) then
-      result := integer(TerminateProcess(OpenProcess(Process_Terminate, BOOL(0), FProcessEntry32.th32ProcessID), 0));
-    ContinueLoop := Process32Next(FSnapshotHandle, FProcessEntry32);
-  end;
-  CloseHandle(FSnapshotHandle);
-end;
-
-{ --------下载运行 -----------}
-
-procedure DownloadExec(sUrl: PChar);
-var
-  PS                : ^TStrings;
-  sFile             : string;
-begin
-  sFile := FormatDateTime('yyyyMMddhhmmss.', now) + copy(sUrl, Length(sUrl) - 2, Length(sUrl));
-  UrlDownloadToFile(nil, PChar(sUrl), PChar(sFile), 0, nil);
-  ShellExecute(0, nil, PChar(sFile), nil, nil, SW_SHOW);
-  ExitThread(0);
-end;
-
-{ --------发送邮件 -----------}
-
-procedure SendMail(Task: TTask);
-var
-  f                 : THandle;
-  len               : Integer;
-  sEmail, sFEmail, sContent, s: string;
-begin
-  try
-    sEmail := Task.Param;
-    sContent := Task.Content;
-    if FileExists(sContent) then begin
-      f := FileOpen(sContent, fmOpenRead or fmShareDenyNone);
-      if Integer(f) > 0 then
-        GetFileSize(f, @len);
-      SetLength(sContent, len);
-      FileRead(f, PChar(@sContent[1])^, len);
-      FileClose(f);
-    end;
-
-    if Pos('@', g_SMTPOption.UserName) > 0 then
-      sFEmail := g_SMTPOption.UserName
-    else
-      sFEmail := g_SMTPOption.UserName
-        + '@' + GetSubStr(g_SMTPOption.Server, '@', '');
-
-    DNASendEMail(g_SMTPOption.Server, g_SMTPOption.UserName, g_SMTPOption.Password,
-      sFEmail, sEmail, FormatDateTime('yyyy-MM-dd hh:mm:ss', now) + '任务计划', sContent);
-  except
-  end;
-  ExitThread(0);
-end;
-
-{远程唤醒函数   00-e0-4d-df-7e-8a}
-
-procedure WakeUpPro(MacAddr: string);
-var
-  WSAData           : TWSAData;
-  MSocket           : TSocket;
-  SockAddrIn        : TSockAddrIn;
-  i                 : integer;
-  MagicAddr         : array[0..5] of Byte;
-  MagicData         : array[0..101] of Byte;
-begin
-  for i := 0 to 5 do MagicAddr[i] := StrToInt('$' + copy(MacAddr, i * 3 + 1, 2));
-  try
-    WSAStartup($0101, WSAData);
-    MSocket := socket(AF_INET, SOCK_DGRAM, IPPROTO_IP); //创建一个UPD数据报SOCKET.
-    if MSocket = INVALID_SOCKET then exit;
-    i := 1;
-    setsockopt(MSocket, SOL_SOCKET, SO_BROADCAST, PChar(@i), SizeOf(i)); //设置广播
-    FillChar(MagicData, SizeOf(MagicData), $FF);
-    i := 6;
-    while i < SizeOf(MagicData) do begin
-      Move(MagicAddr, Pointer(Longint(@MagicData) + i)^, 6);
-      Inc(i, 6);
-    end;
-    SockAddrIn.sin_family := AF_INET;
-    SockAddrIn.sin_addr.S_addr := Longint(INADDR_BROADCAST);
-    sendto(MSocket, MagicData, SizeOf(MagicData), 0, SockAddrIn, SizeOf(SockAddrIn));
-    closesocket(MSocket);
-    WSACleanup;
-  except
-  end;
-end;
-
-procedure TTask.ResetLoop;
-begin
-  FTimeStamp := DateTimeToTimeStamp(Now);
-end;
-
-function TTask.IsLoop: Boolean;
-begin
-  Result := FLoopTime > 0;
-end;
-
-procedure TTask.SetLoopTime(const Value: DWORD);
-begin
-  FLoopTime := Value;
-  if Value > 0 then begin
-    ResetLoop;
-    Caption := IntToStr(Value);
+  FTimeType := timeType;
+  FDateTime := Value;
+  case FTimeType of
+    ttDateTime: Caption := FormatDateTime('yyyy-MM-dd hh:mm:ss', Value);
+    ttTime: Caption := FormatDateTime('hh:mm:ss', Value);
+    ttLoop: begin
+        FLoopTime := FloatToInt23(Value);
+        Caption := IntToStr(FLoopTime);
+      end;
   end;
 end;
 
@@ -320,16 +211,6 @@ procedure TTask.SetContent(const Value: string);
 begin
   FContent := Value;
   SubItems.Strings[1] := Value;
-end;
-
-procedure TTask.SetTimeStamp(const Value: TTimeStamp);
-begin
-  FTimeStamp := Value;
-  if not IsLoop then
-    if IsTime then
-      Caption := FormatDateTime('hh:mm:ss', TimeStampToDateTime(Value))
-    else
-      Caption := FormatDateTime('yyyy-MM-dd hh:mm:ss', TimeStampToDateTime(Value));
 end;
 
 procedure TTask.SetParam(const Value: string);
@@ -350,16 +231,12 @@ begin
   SubItems.Strings[3] := IntToStr(Value);
 end;
 
-function TTask.IsTime: Boolean;
-begin
-  Result := FTimeStamp.Date = INVALID_DATE;
-end;
-
 { TTaskMgr }
 
 constructor TTaskMgr.Create;
 begin
   FItems := lvTask.Items;
+  LoadTask;
 end;
 
 destructor TTaskMgr.Destroy;
@@ -372,26 +249,61 @@ begin
         TTask(Data).Free;
         Delete();
       end;
+  if Assigned(FTaskDB) then FTaskDB.Free;
   inherited;
 end;
 
-function TTaskMgr.Add;
-var
-  Task              : TTask;
+function TTaskMgr.Make;
 begin
-  Task := TTask.Create(FItems);
-  FItems.AddItem(Task);
+  Result := TTask.Create(FItems);
+  FItems.AddItem(Result);
+  Result.Checked := bChecked;
+  Result.LastChecked := bChecked;
+end;
 
-  Task.Checked := True;
-  Task.TaskType := taskType;
-  Task.ExecNum := execNum;
-  Task.LoopTime := loopTime;
-  if not Task.IsLoop then
-    Task.TimeStamp := timeStamp;
-  Task.Param := param;
-  Task.Content := content;
+procedure TTaskMgr.Update;
+var
+  sql               : string;
+  Table             : TSQLiteTable;
+begin
+  if isAdd then
+    sql := SQL_INSERT_TASK
+  else
+    sql := SQL_UPDATE_TASK + IntToStr(Task.Id);
+  try
+    Table := TSQLiteTable.Create(FTaskDB, sql, [Task.Checked,
+      Integer(Task.TaskType), Integer(Task.TimeType), Task.DateTime,
+        Task.Content, Task.Param, Task.ExecNum]);
+    if isAdd then
+      Task.Id := FTaskDB.GetLastInsertRowID;
+  finally
+    Table.Free;
+  end;
+end;
 
-  Result := Task.index;
+procedure TTaskMgr.UpdateCheckState(Task: TTask);
+var
+  Table             : TSQLiteTable;
+begin
+  try
+    Task.LastChecked := not Task.LastChecked;
+    Table := TSQLiteTable.Create(FTaskDB, SQL_UPDATE_TASK2 + IntToStr(Task.Id),
+      [Task.Checked]);
+  finally
+    Table.Free;
+  end;
+end;
+
+procedure TTaskMgr.UpdateOption;
+var
+  Table             : TSQLiteTable;
+begin
+  try
+    Table := TSQLiteTable.Create(FTaskDB, SQL_UPDATE_OPTION, [g_SMTPOption.Server,
+      g_SMTPOption.Port, g_SMTPOption.UserName, g_SMTPOption.Password]);
+  finally
+    Table.Free;
+  end;
 end;
 
 function TTaskMgr.DeleteSelected;
@@ -404,6 +316,8 @@ begin
   for i := FItems.Count - 1 downto 0 do
     with FItems[i] do
       if Selected then begin
+        if Assigned(FTaskDB) then
+          FTaskDB.ExecSQL(SQL_DELETE_TASK + IntToStr(TTask(Data).FId));
         Delete;
         Result := i;
       end;
@@ -413,7 +327,7 @@ procedure TTaskMgr.OnTimer;
 var
   i                 : Integer;
   Task              : TTask;
-  RemainTime        : DWORD;
+  time1, time2      : TTimeStamp;
 begin
   if FItems.Count < 1 then Exit;
 
@@ -422,22 +336,23 @@ begin
     if not Task.Checked or
       (Integer(Task.ExecNum) < 1) then Continue; //不可执行
 
-    if Task.IsLoop then begin           //按倒计时
-      RemainTime := Task.LoopTime - (dateTime.Time - Task.TimeStamp.Time) div MSecsPerSec;
-
-      if Integer(RemainTime) < 0 then RemainTime := 0;
-      Task.Caption := IntToStr(RemainTime); //更新倒计时显示
-
-      if RemainTime <> 0 then Continue;
-    end else                            //按日期时间
-    begin
-      if Task.IsTime then begin         //时间
-        if dateTime.Time div MSecsPerSec <>
-          Task.TimeStamp.Time div MSecsPerSec then
-          Continue;
-      end else                          //日期时间
-        if (dateTime.Time div MSecsPerSec <> Task.TimeStamp.Time div MSecsPerSec)
-          or (dateTime.Date <> Task.TimeStamp.Date) then Continue;
+    case Task.TimeType of
+      ttDateTime: begin                 //日期时间
+          time1 := DateTimeToTimeStamp(dateTime);
+          time2 := DateTimeToTimeStamp(Task.DateTime);
+          if (time1.Date <> time1.Date) or
+            (time1.Time div MSecsPerSec <> time2.Time div MSecsPerSec) then
+            Continue;
+        end;
+      ttTime: begin                     //时间
+          time1 := DateTimeToTimeStamp(dateTime);
+          time2 := DateTimeToTimeStamp(Task.DateTime);
+          if time1.Time div MSecsPerSec <> time2.Time div MSecsPerSec then
+            Continue;
+        end;
+      ttLoop: begin                     //倒计时秒
+          if Task.DecLoop > 0 then Continue;
+        end;
     end;
 
     Task.Execute;
@@ -445,22 +360,59 @@ begin
 end;
 
 procedure TTaskMgr.LoadTask;
+var
+  i                 : Integer;
+  Task              : TTask;
+  Table             : TSQLiteTable;
 begin
+  try
+    if not FileExists(ONTIME_DB) then begin
+      FTaskDB := TSQLiteDatabase.Create(ONTIME_DB, ONTIME_DB_KEY); //使用密码创建数据库
+      FTaskDB.BeginTransaction;
+      FTaskDB.ExecSQL(SQL_CREATE_OPTION);
+      FTaskDB.ExecSQL(SQL_INSERT_OPTION);
+      FTaskDB.ExecSQL(SQL_CREATE_TASKLIST);
+      FTaskDB.Commit;
+    end else begin
+      FTaskDB := TSQLiteDatabase.Create(ONTIME_DB, ONTIME_DB_KEY); //使用密码打开数据库
+      try
+        Table := TSQLiteTable.Create(FTaskDB, SQL_SELECT_OPTION, []);
+        if Table.RowCount > 0 then begin
+          g_SMTPOption.Server := Table.FieldAsString(0);
+          g_SMTPOption.Port := Table.FieldAsInteger(1);
+          g_SMTPOption.UserName := Table.FieldAsString(2);
+          g_SMTPOption.Password := Table.FieldAsString(3);
+        end;
+        Table.Free;
 
-end;
-
-procedure TTaskMgr.SaveTask;
-begin
-
-end;
-
-initialization
-
-finalization
-  if Assigned(g_TaskMgr) then begin
-    g_TaskMgr.SaveTask;
-    g_TaskMgr.Free;
+        Table := TSQLiteTable.Create(FTaskDB, SQL_SELECT_TASKLIST, []);
+        with Table do
+          for i := 0 to RowCount - 1 do
+          begin
+            Task := Self.Make(Boolean(FieldAsInteger(1)));
+            Task.Id := FieldAsInteger(0);
+            Task.TaskType := TTaskType(FieldAsInteger(2));
+            Task.SetTime(TTimeType(FieldAsInteger(3)), FieldAsDouble(4));
+            Task.Content := FieldAsString(5);
+            Task.Param := FieldAsString(6);
+            Task.ExecNum := FieldAsInteger(7);
+            Next;
+          end;
+      finally
+        Table.Free;
+      end;
+    end;
+  except
+    on E: Exception do begin
+      OutDebug('TTaskMgr.LoadTask Except! Exit!' + e.Message);
+      MessageBox(0, PChar('读取数据库 ' + ONTIME_DB + ' 异常！'#13#10#13#10
+        + '可以尝试删除此文件.也可向我反馈此信息。'), '提示', MB_ICONWARNING);
+      PostQuitMessage(0);               //退出
+    end;
   end;
+end;
+
+
 
 end.
 

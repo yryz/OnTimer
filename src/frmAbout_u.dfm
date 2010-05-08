@@ -1,23 +1,27 @@
 object frmAbout: TfrmAbout
   Left = 637
   Top = 226
-  Width = 312
-  Height = 179
   BorderIcons = [biSystemMenu]
+  BorderStyle = bsToolWindow
   Caption = #20851#20110
+  ClientHeight = 142
+  ClientWidth = 304
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
   Font.Name = 'MS Sans Serif'
   Font.Style = []
+  FormStyle = fsStayOnTop
+  KeyPreview = True
   OldCreateOrder = False
   Position = poMainFormCenter
+  OnKeyDown = FormKeyDown
   PixelsPerInch = 96
   TextHeight = 13
   object lbl1: TLabel
     Left = 220
-    Top = 126
+    Top = 122
     Width = 66
     Height = 13
     Alignment = taRightJustify
@@ -27,10 +31,9 @@ object frmAbout: TfrmAbout
   end
   object lblVer: TLabel
     Left = 10
-    Top = 124
-    Width = 49
+    Top = 122
+    Width = 37
     Height = 13
-    AutoSize = False
     Caption = 'Ver1.2b'
   end
   object pnl1: TPanel
@@ -41,19 +44,20 @@ object frmAbout: TfrmAbout
     BevelInner = bvRaised
     BevelOuter = bvLowered
     Color = clWindow
+    ParentBackground = False
     TabOrder = 0
     object InfoLabelL3: TLabel
       Left = 150
-      Top = 77
+      Top = 69
       Width = 39
       Height = 13
       Alignment = taRightJustify
       AutoSize = False
-      Caption = #20027#39029': '
+      Caption = #20027#39029':'
     end
     object InfoLabelUrl: TLabel
       Left = 195
-      Top = 76
+      Top = 69
       Width = 84
       Height = 13
       Cursor = crHandPoint
@@ -68,7 +72,7 @@ object frmAbout: TfrmAbout
     end
     object InfoLabelQQ: TLabel
       Left = 195
-      Top = 52
+      Top = 47
       Width = 48
       Height = 13
       Cursor = crHelp
@@ -83,7 +87,7 @@ object frmAbout: TfrmAbout
     end
     object InfoLabelL2: TLabel
       Left = 150
-      Top = 51
+      Top = 48
       Width = 39
       Height = 13
       Alignment = taRightJustify
@@ -92,7 +96,7 @@ object frmAbout: TfrmAbout
     end
     object InfoLabelL1: TLabel
       Left = 150
-      Top = 27
+      Top = 26
       Width = 39
       Height = 13
       Alignment = taRightJustify
@@ -101,10 +105,9 @@ object frmAbout: TfrmAbout
     end
     object InfoLabelZZ: TLabel
       Left = 195
-      Top = 27
-      Width = 65
+      Top = 26
+      Width = 39
       Height = 13
-      AutoSize = False
       Caption = 'HouSoft'
     end
     object img1: TImage

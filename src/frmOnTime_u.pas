@@ -27,9 +27,7 @@ type
     N2: TMenuItem;
     mniOption: TMenuItem;
     mniExec: TMenuItem;
-    function AddTaskItem(b: Boolean; taskType: TTaskType;
-      execNum, loopTime: DWORD; dateTime: TTimeStamp;
-      param, content: string): Integer;
+    N3: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure SaveTask(Sender: TObject);
     procedure tmrOntimerTimer(Sender: TObject);
@@ -40,8 +38,10 @@ type
     procedure mniDelClick(Sender: TObject);
     procedure mniExecClick(Sender: TObject);
     procedure mniOptionClick(Sender: TObject);
-    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure PopMenuAPopup(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure mniExitClick(Sender: TObject);
+    procedure lvTaskClick(Sender: TObject);
   private
     procedure SysEvent(var Message: Tmessage); message WM_SYSCOMMAND;
     procedure TrayEvent(var Message: Tmessage); message WM_ICON;
@@ -50,7 +50,6 @@ type
 
 resourcestring
   Conf              = 'OnTime.db';
-
 
 var
   frmOnTime         : TfrmOnTime;
@@ -73,11 +72,6 @@ begin
     HIcon := Application.Icon.Handle;
   end;
   Shell_NotifyIcon(NIM_ADD, @AppTray);
-end;
-
-function TfrmOnTime.AddTaskItem;
-begin
-  Result := g_TaskMgr.Add(taskType, execNum, loopTime, dateTime, param, content);
 end;
 
 procedure TfrmOnTime.SysEvent(var Message: Tmessage);
@@ -109,30 +103,10 @@ begin
 end;
 
 procedure TfrmOnTime.FormCreate(Sender: TObject);
-var
-  f                 : textfile;
-  B, S1, S2, S3, S4 : string;
 begin
-  try
-    SetTryico;
-    g_TaskMgr := TTaskMgr.Create(lvTask);
-
-    //    if FileExists(Conf) then begin
-    //      assignFile(f, Conf);
-    //      reset(f);
-    //      while not eof(f) do begin
-    //        readln(f, B);
-    //        readln(f, S1);
-    //        readln(f, S4);
-    //        readln(f, S3);
-    //        readln(f, S2);
-    //        AddTaskItem(StrToBool(B), S1, S2, S3, S4);
-    //      end;
-    //      CloseFile(f);
-    //    end;
-  except
-    CloseFile(f);
-  end;
+  SetTryico;
+  g_TaskMgr := TTaskMgr.Create(lvTask);
+  tmrOntimer.Enabled := True;
 end;
 
 procedure TfrmOnTime.tmrOntimerTimer(Sender: TObject);
@@ -141,7 +115,7 @@ var
 begin
   dateTime := now;
   Caption := FormatDateTime('yyyy-MM-dd hh:mm:ss', dateTime);
-  g_TaskMgr.OnTimer(DateTimeToTimeStamp(dateTime));
+  g_TaskMgr.OnTimer(dateTime);
 end;
 
 procedure TfrmOnTime.tmrMemTimer(Sender: TObject);
@@ -187,25 +161,19 @@ end;
 procedure TfrmOnTime.mniAddClick(Sender: TObject);
 begin
   if not Assigned(frmAddTask) then
-    frmAddTask := TfrmAddTask.Create(Application);
-  frmAddTask.Task := nil;
+    frmAddTask := TfrmAddTask.Create(nil);
+  frmAddTask.grpTask.Caption := '任务添加';
   frmAddTask.ShowModal;
   FreeAndNil(frmAddTask);
 end;
 
 procedure TfrmOnTime.mniEditClick(Sender: TObject);
-var
-  Task              : TTask;
 begin
   if lvTask.SelCount < 1 then Exit;
   if not Assigned(frmAddTask) then
-    frmAddTask := TfrmAddTask.Create(Application);
-
-  Task := lvTask.Selected.Data;
-  if Assigned(Task) then begin
-    frmAddTask.Task := Task;
-    frmAddTask.ShowModal;
-  end;
+    frmAddTask := TfrmAddTask.Create(lvTask.Selected.Data);
+  frmAddTask.grpTask.Caption := '任务编辑';
+  frmAddTask.ShowModal;
   FreeAndNil(frmAddTask);
 end;
 
@@ -235,12 +203,6 @@ begin
   FreeAndNil(frmOption);
 end;
 
-procedure TfrmOnTime.FormCloseQuery(Sender: TObject;
-  var CanClose: Boolean);
-begin
-  Shell_NotifyIcon(NIM_DELETE, @AppTray);
-end;
-
 procedure TfrmOnTime.PopMenuAPopup(Sender: TObject);
 var
   b                 : Boolean;
@@ -249,6 +211,30 @@ begin
   mniDel.Visible := b;
   mniEdit.Visible := b;
   mniExec.Visible := b;
+end;
+
+procedure TfrmOnTime.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  Hide;
+  Shell_NotifyIcon(NIM_DELETE, @AppTray);
+  if Assigned(g_TaskMgr) then
+    g_TaskMgr.Free;
+end;
+
+procedure TfrmOnTime.mniExitClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfrmOnTime.lvTaskClick(Sender: TObject);
+var
+  i                 : Integer;
+begin
+  with TListView(Sender).Items do
+    for i := 0 to Count - 1 do begin
+      if Item[i].Checked <> TTask(Item[i].Data).LastChecked then
+        g_TaskMgr.UpdateCheckState(Item[i].Data);
+    end;
 end;
 
 end.

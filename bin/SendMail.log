@@ -1,34 +1,30 @@
-220 relay.cmail.sogou.com ESMTP Postfix
+220 126.com Anti-spam GT for Coremail System (126com[20090903])
 
-250 relay.cmail.sogou.com
-SMTP Postfix
+250 OK
+com Anti-spam GT for Coremail System (126com[20090903])
 
-334 VXNlcm5hbWU6
-gou.com
-SMTP Postfix
+334 dXNlcm5hbWU6
+pam GT for Coremail System (126com[20090903])
 
 334 UGFzc3dvcmQ6
-gou.com
-SMTP Postfix
+pam GT for Coremail System (126com[20090903])
 
-235 2.0.0 Authentication successful
-ix
+235 Authentication successful
+remail System (126com[20090903])
 
-250 2.1.0 Ok
-entication successful
-ix
+250 Mail OK
+ation successful
+remail System (126com[20090903])
 
-250 2.1.5 Ok
-entication successful
-ix
+250 Mail OK
+ation successful
+remail System (126com[20090903])
 
 354 End data with <CR><LF>.<CR><LF>
-ix
+ System (126com[20090903])
 
-250 2.0.0 Ok: queued as 17EF655C9E3
-ix
-
-221 2.0.0 Bye
-ueued as 17EF655C9E3
-ix
-
+250 Mail OK queued as smtp6,j9KowLAbKAE_2uVLavsRAQ--.39128S2 1273354817
+ ­	
+221 Bye
+OK queued as smtp6,j9KowLAbKAE_2uVLavsRAQ--.39128S2 1273354817
+ ­	

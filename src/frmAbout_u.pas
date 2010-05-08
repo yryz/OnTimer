@@ -20,6 +20,8 @@ type
     lblVer: TLabel;
     procedure InfoLabelUrlClick(Sender: TObject);
     procedure InfoLabelQQClick(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
   private
 
   public
@@ -46,4 +48,11 @@ begin
   ShellExecute(Handle, nil, PChar(Tencent + InfoLabelQQ.Caption), nil, nil, SW_SHOW);
 end;
 
+procedure TfrmAbout.FormKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_ESCAPE then Close;
+end;
+
 end.
+

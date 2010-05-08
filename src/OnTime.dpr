@@ -8,7 +8,6 @@ uses
   frmOption_u in 'frmOption_u.pas' {frmOption},
   frmAbout_u in 'frmAbout_u.pas' {frmAbout},
   TaskMgr_u in 'TaskMgr_u.pas',
-  FuncLib in '..\Include\FuncLib.pas',
   TooltipUtil in 'TooltipUtil.pas';
 
 {$R *.res}

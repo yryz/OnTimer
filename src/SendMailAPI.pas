@@ -11,14 +11,15 @@ interface
 uses
   windows, winsock;
 
-function DNASendEMail(PSmtp, PUser, PPass, PFromMail, PToMail, Subject, MailText: string): boolean;
+function DNASendEMail(sSmtp: string; wPort: Word;
+  sUser, sPass, sFromMail, sToMail, sSubject, sMailText: string): boolean;
 
 implementation
 var
-  SendBody: string;
+  SendBody          : string;
 const
-  CRLF = #13#10;
-  BaseTable: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  CRLF              = #13#10;
+  BaseTable         : string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
 function StrLen(const Str: PChar): Cardinal; assembler;
 asm
@@ -67,9 +68,9 @@ end;
 
 function EncodeBase64(Source: string): string;
 var
-  Times, LenSrc, i: integer;
-  x1, x2, x3, x4: char;
-  xt: byte;
+  Times, LenSrc, i  : integer;
+  x1, x2, x3, x4    : char;
+  xt                : byte;
 begin
   Result := '';
   LenSrc := length(Source);
@@ -109,8 +110,8 @@ end;
 
 function LookupName(const Name: string): TInAddr;
 var
-  HostEnt: PHostEnt;
-  InAddr: TInAddr;
+  HostEnt           : PHostEnt;
+  InAddr            : TInAddr;
 begin
   HostEnt := gethostbyname(PChar(Name));
   FillChar(InAddr, SizeOf(InAddr), 0);
@@ -128,10 +129,10 @@ end;
 
 function StartNet(host: string; port: integer; var sock: integer): boolean;
 var
-  wsadata: twsadata;
-  FSocket: integer;
-  SockAddrIn: TSockAddrIn;
-  err: integer;
+  wsadata           : twsadata;
+  FSocket           : integer;
+  SockAddrIn        : TSockAddrIn;
+  err               : integer;
 begin
   err := WSAStartup($0101, wsadata);
   FSocket := socket(PF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -154,7 +155,7 @@ end;
 
 procedure StopNet(FSocket: integer);
 var
-  err: integer;
+  err               : integer;
 begin
   err := closesocket(FSocket);
   err := WSACleanup;
@@ -162,8 +163,8 @@ end;
 
 function SendData(FSocket: integer; SendStr: string): integer;
 var
-  DataBuf: array[0..4096] of char;
-  err: integer;
+  DataBuf           : array[0..4096] of char;
+  err               : integer;
 begin
   StrCopy(DataBuf, PChar(SendStr));
   err := send(FSocket, DataBuf, StrLen(DataBuf), MSG_DONTROUTE);
@@ -172,45 +173,45 @@ end;
 
 function GetData(FSocket: integer): string;
 const
-  MaxSize = 1024;
+  MaxSize           = 1024;
 var
-  DataBuf: array[0..MaxSize] of char;
-  err: integer;
+  DataBuf           : array[0..MaxSize] of char;
+  err               : integer;
 begin
   err := recv(FSocket, DataBuf, MaxSize, 0);
   Result := StrPas(DataBuf);
 end;
 
-function DNASendEMail(PSmtp, PUser, PPass, PFromMail, PToMail, Subject, MailText: string): boolean;
+function DNASendEMail(sSmtp: string; wPort: Word;
+  sUser, sPass, sFromMail, sToMail, sSubject, sMailText: string): boolean;
 var
-  FSocket, res: integer;
-  f: textfile;
+  FSocket, res      : integer;
+  f                 : textfile;
 begin
   assignFile(f, 'SendMail.log');
   rewrite(f);
   Result := False;
-  if StartNet(PSmtp, 25, FSocket) then begin
+  if StartNet(sSmtp, wPort, FSocket) then begin
     writeln(f, GetData(FSocket));
-    SendData(FSocket, 'HELO ' + PUser + CRLF);
-    writeln(f, GetData(FSocket)); 
+    SendData(FSocket, 'HELO ' + sUser + CRLF);
+    writeln(f, GetData(FSocket));
     SendData(FSocket, 'AUTH LOGIN' + CRLF);
     writeln(f, GetData(FSocket));
-    SendData(FSocket, EncodeBase64(PUser) + CRLF);
+    SendData(FSocket, EncodeBase64(sUser) + CRLF);
     writeln(f, GetData(FSocket));
-    SendData(FSocket, EncodeBase64(PPass) + CRLF);
+    SendData(FSocket, EncodeBase64(sPass) + CRLF);
     writeln(f, GetData(FSocket));
-    SendData(FSocket, 'MAIL FROM: <' + PFromMail + '>' + CRLF);
+    SendData(FSocket, 'MAIL FROM: <' + sFromMail + '>' + CRLF);
     writeln(f, GetData(FSocket));
-    SendData(FSocket, 'RCPT TO: <' + PToMail + '>' + CRLF);
+    SendData(FSocket, 'RCPT TO: <' + sToMail + '>' + CRLF);
     writeln(f, GetData(FSocket));
     SendData(FSocket, 'DATA' + CRLF);
     writeln(f, GetData(FSocket));
-    SendBody := 'From:信息 <' + PFromMail + '>' + CRLF
-      + 'To: <' + PTOMail + '>' + CRLF
-      + 'Subject: ' + Subject + CRLF
+    SendBody := 'From:信息 <' + sFromMail + '>' + CRLF
+      + 'To: <' + sTOMail + '>' + CRLF
+      + 'Subject: ' + sSubject + CRLF
       + CRLF
-      + MailText +CRLF
-      + '.' + CRLF;
+      + sMailText + CRLF + '.' + CRLF;
     res := SendData(FSocket, SendBody);
     writeln(f, GetData(FSocket));
     SendData(FSocket, 'QUIT' + CRLF);
