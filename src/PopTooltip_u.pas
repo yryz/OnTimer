@@ -177,9 +177,10 @@ begin
       WM_LBUTTONDOWN: begin
           //OutputDebugString(PChar(IntToStr(LParamLo)+'|'+IntToStr(LParamHi)));
           if (LParamLo >= FWidth - 10)
-            and (LParamHi < 10) then    { 点击关闭图标 }
-            PostMessage(FHandle, WM_CLOSE, 0, 0)
-          else begin                    { 拖动 }
+            and (LParamHi < 10) then begin { 点击关闭图标 }
+            FIsQuitAnimate := True;
+            SetTimer(FHandle, TIMER_ANIMATE, 10, nil);
+          end else begin                { 拖动 }
             ReleaseCapture;
             PostMessage(FHandle, WM_SYSCOMMAND, $F012, 0);
           end;

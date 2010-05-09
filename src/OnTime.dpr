@@ -15,7 +15,7 @@ uses
 begin
   Application.Initialize;
   Application.Title := '任务计划';
-  if AnsiLowercase(ParamStr(1)) = '/hide' then
+  if StrIComp(PChar(ParamStr(1)), '/hide') = 0 then
     Application.ShowMainForm := False;
   Application.CreateForm(TfrmOnTime, frmOnTime);
   Application.Run;

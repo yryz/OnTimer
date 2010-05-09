@@ -45,6 +45,7 @@ type
   private
     procedure SysEvent(var Message: Tmessage); message WM_SYSCOMMAND;
     procedure TrayEvent(var Message: Tmessage); message WM_ICON;
+    procedure WMHotKey(var Msg: TMessage); message WM_HOTKEY;
   public
   end;
 
@@ -78,7 +79,7 @@ procedure TfrmOnTime.SysEvent(var Message: Tmessage);
 begin
   inherited;
   if Message.wParam = SC_MINIMIZE then
-    ShowWindow(Application.Handle, SW_HIDE);
+    Hide
 end;
 
 procedure TfrmOnTime.TrayEvent(var Message: Tmessage);
@@ -89,8 +90,7 @@ begin
   case Message.lParam of
     WM_LBUTTONDBLCLK: begin
         Show;
-        Application.Restore;
-        Application.BringToFront;
+        SetActiveWindow(Handle);
       end;
 
     WM_RBUTTONDOWN: begin
@@ -105,6 +105,8 @@ end;
 procedure TfrmOnTime.FormCreate(Sender: TObject);
 begin
   SetTryico;
+  if not RegisterHotKey(Handle, 0, MOD_CONTROL, VK_F1) then
+    MessageBox(Handle, '注册热键失败!', '任务计划', MB_ICONWARNING);
   g_TaskMgr := TTaskMgr.Create(lvTask);
   tmrOntimer.Enabled := True;
 end;
@@ -219,6 +221,7 @@ begin
   Shell_NotifyIcon(NIM_DELETE, @AppTray);
   if Assigned(g_TaskMgr) then
     g_TaskMgr.Free;
+  UnregisterHotKey(Handle, 0);
 end;
 
 procedure TfrmOnTime.mniExitClick(Sender: TObject);
@@ -235,6 +238,14 @@ begin
       if Item[i].Checked <> TTask(Item[i].Data).LastChecked then
         g_TaskMgr.UpdateCheckState(Item[i].Data);
     end;
+end;
+
+procedure TfrmOnTime.WMHotKey(var Msg: TMessage);
+begin
+  if (Msg.LparamLo = MOD_CONTROL) and (Msg.LParamHi = VK_F1) then begin
+    Show;
+    SetActiveWindow(Handle);
+  end;
 end;
 
 end.
