@@ -54,6 +54,7 @@ resourcestring
 
 var
   frmOnTime         : TfrmOnTime;
+  IsHideTray        : Boolean;
   AppTray           : TNotifyIconData;
 
 implementation
@@ -64,6 +65,7 @@ uses
 
 procedure SetTryico;
 begin
+  if IsHideTray then Exit;
   with AppTray do begin
     cbSize := SizeOf(AppTray);
     Wnd := frmOnTime.Handle;

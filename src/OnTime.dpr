@@ -1,6 +1,7 @@
 program OnTime;
 
 uses
+  Windows,
   Forms,
   SysUtils,
   frmOnTime_u in 'frmOnTime_u.pas' {frmOnTime},
@@ -16,7 +17,11 @@ begin
   Application.Initialize;
   Application.Title := '任务计划';
   if StrIComp(PChar(ParamStr(1)), '/hide') = 0 then
+    Application.ShowMainForm := False
+  else if StrIComp(PChar(ParamStr(1)), '/hidefull') = 0 then begin
+    IsHideTray := True;
     Application.ShowMainForm := False;
+  end;
   Application.CreateForm(TfrmOnTime, frmOnTime);
   Application.Run;
 end.

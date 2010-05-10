@@ -26,7 +26,7 @@ const
     + ',smtppass=?';
   { TASK SQL }
   SQL_CREATE_TASKLIST = 'CREATE TABLE tasklist(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,'
-    + 'checked INTEGER,tasktype INTEGER,timetype INTEGER,time DOUBLE,content TEXT,'
+    + 'checked INTEGER,tasktype INTEGER,timetype INTEGER,time INTEGER,content TEXT,'
     + 'param TEXT,execnum INTEGER)';
   SQL_SELECT_OPTION = 'SELECT * FROM option';
   SQL_SELECT_TASKLIST = 'SELECT * FROM tasklist';
@@ -38,19 +38,30 @@ const
   SQL_DELETE_TASK   = 'DELETE FROM tasklist WHERE id=';
 
 type
-  TTimeType = (ttDateTime, ttTime, ttLoop);
+  TTimeType = (ttDateTime, ttTime, ttLoop, ttWeekOfTime, ttWeekOfLoop);
+  TWeekOfDay = (wdNone, wdMon, wdTue, wdWed, wdThu, wdFri, wdSat, wdSun);
+  PWeekSet = ^TWeekSet;
+  TWeekSet = set of TWeekOfDay;
+  PTimeRec = ^TTimeRec;
+  TTimeRec = record                     //要与TTimeStamp结构相同！
+    TimeOrLoop: DWORD;
+    DateOrWeek: DWORD;
+  end;
 
 type
   TTaskMgr = class;
 
+  PTask = ^TTask;
   TTask = class(TListItem)              //TListView中添加此Item
   private
     FId: Integer;
     FExecNum: DWORD;                    //可执行次数
     FTaskType: TTaskType;
     FTimeType: TTimeType;               //记时类型
-    FLoopTime: Integer;                 //LOOP记时
-    FDateTime: TDateTime;               //设定时间值
+    FLoopTime: DWORD;                   //倒计时计数
+    FIsWeek: Boolean;                   //是否作星期判断，只对时间、倒计时有效
+    FWeekStr: string;
+    FTimeRec: TTimeRec;                 //设定日期、时间、星期、倒计时
     FParam: string;
     FContent: string;
     FLastChecked: Boolean;              //决定是否要把Checked状态写入数据库
@@ -63,13 +74,14 @@ type
     destructor Destroy; override;
     procedure Execute;
     function DecLoop: Integer;          //调用一次，减一秒
-    procedure SetTime(timeType: TTimeType; Value: TDateTime);
+    procedure SetTime(timeType: TTimeType; Value: TTimeRec);
   published
     property Id: Integer read FId write FId;
     property ExecNum: DWORD read FExecNum write SetExecNum;
     property TaskType: TTaskType read FTaskType write SetTaskType;
     property TimeType: TTimeType read FTimeType;
-    property DateTime: TDateTime read FDateTime;
+    property IsWeek: Boolean read FIsWeek;
+    property TimeRec: TTimeRec read FTimeRec write FTimeRec;
     property Param: string read FParam write SetParam;
     property Content: string read FContent write SetContent;
     property LastChecked: Boolean read FLastChecked write FLastChecked;
@@ -188,21 +200,39 @@ function TTask.DecLoop;
 begin
   Dec(FLoopTime);
   Result := FLoopTime;
-  Caption := IntToStr(Result);
+  Caption := FWeekStr + IntToStr(Result);
   if Result <= 0 then
-    FLoopTime := FloatToInt23(FDateTime);
+    FLoopTime := FTimeRec.TimeOrLoop;
 end;
 
 procedure TTask.SetTime;
+var
+  weekSet           : TWeekSet;
 begin
+  FTimeRec := Value;
   FTimeType := timeType;
-  FDateTime := Value;
-  case FTimeType of
-    ttDateTime: Caption := FormatDateTime('yyyy-MM-dd hh:mm:ss', Value);
-    ttTime: Caption := FormatDateTime('hh:mm:ss', Value);
-    ttLoop: begin
-        FLoopTime := FloatToInt23(Value);
-        Caption := IntToStr(FLoopTime);
+  case timeType of
+    {　固定日期　}
+    ttDateTime: Caption := FormatDateTime('yyyy-MM-dd hh:mm:ss', PDateTime(@Value)^);
+    {　周期时间　}
+    ttLoop, ttTime: begin
+        weekSet := PWeekSet(@Value.DateOrWeek)^;
+        FIsWeek := TWeekOfDay(weekSet) > wdNone; { 周一到周日 }
+        if FIsWeek then begin
+          FWeekStr := '';
+          if wdMon in weekSet then FWeekStr := FWeekStr + '1#';
+          if wdTue in weekSet then FWeekStr := FWeekStr + '2#';
+          if wdWed in weekSet then FWeekStr := FWeekStr + '3#';
+          if wdThu in weekSet then FWeekStr := FWeekStr + '4#';
+          if wdFri in weekSet then FWeekStr := FWeekStr + '5#';
+          if wdSat in weekSet then FWeekStr := FWeekStr + '6#';
+          if wdSun in weekSet then FWeekStr := FWeekStr + '7#';
+        end;
+        if FTimeType = ttLoop then begin
+          FLoopTime := Value.TimeOrLoop;
+          Caption := FWeekStr + IntToStr(FLoopTime);
+        end else
+          Caption := FWeekStr + FormatDateTime('hh:mm:ss', PDateTime(@Value)^);
       end;
   end;
 end;
@@ -272,7 +302,7 @@ begin
     sql := SQL_UPDATE_TASK + IntToStr(Task.Id);
   try
     Table := TSQLiteTable.Create(FTaskDB, sql, [Task.Checked,
-      Integer(Task.TaskType), Integer(Task.TimeType), Task.DateTime,
+      Integer(Task.TaskType), Integer(Task.TimeType), PInt64(@Task.TimeRec)^,
         Task.Content, Task.Param, Task.ExecNum]);
     if isAdd then
       Task.Id := FTaskDB.GetLastInsertRowID;
@@ -339,19 +369,26 @@ begin
     case Task.TimeType of
       ttDateTime: begin                 //日期时间
           time1 := DateTimeToTimeStamp(dateTime);
-          time2 := DateTimeToTimeStamp(Task.DateTime);
+          time2 := TTimeStamp(Task.TimeRec);
           if (time1.Date <> time1.Date) or
             (time1.Time div MSecsPerSec <> time2.Time div MSecsPerSec) then
             Continue;
         end;
-      ttTime: begin                     //时间
+      ttLoop, ttTime: begin
           time1 := DateTimeToTimeStamp(dateTime);
-          time2 := DateTimeToTimeStamp(Task.DateTime);
-          if time1.Time div MSecsPerSec <> time2.Time div MSecsPerSec then
-            Continue;
-        end;
-      ttLoop: begin                     //倒计时秒
-          if Task.DecLoop > 0 then Continue;
+          if Task.IsWeek then           { 星期 }
+            if not (TWeekOfDay(time1.Date mod 7 + 1) in
+              PWeekSet(@Task.TimeRec.DateOrWeek)^) then
+              Continue;
+              
+          if Task.TimeType = ttLoop then begin //倒计时秒
+            if Task.DecLoop > 0 then Continue;
+          end else
+          begin                         //时间
+            time2 := TTimeStamp(Task.TimeRec);
+            if time1.Time div MSecsPerSec <> time2.Time div MSecsPerSec then
+              Continue;
+          end;
         end;
     end;
 
@@ -392,7 +429,7 @@ begin
             Task := Self.Make(Boolean(FieldAsInteger(1)));
             Task.Id := FieldAsInteger(0);
             Task.TaskType := TTaskType(FieldAsInteger(2));
-            Task.SetTime(TTimeType(FieldAsInteger(3)), FieldAsDouble(4));
+            Task.SetTime(TTimeType(FieldAsInteger(3)), TTimeRec(FieldAsInteger(4)));
             Task.Content := FieldAsString(5);
             Task.Param := FieldAsString(6);
             Task.ExecNum := FieldAsInteger(7);
@@ -411,7 +448,6 @@ begin
     end;
   end;
 end;
-
 
 
 end.
