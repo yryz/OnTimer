@@ -39,14 +39,16 @@ const
 
 type
   TTimeType = (ttDateTime, ttTime, ttLoop, ttWeekOfTime, ttWeekOfLoop);
-  TWeekOfDay = (wdNone, wdMon, wdTue, wdWed, wdThu, wdFri, wdSat, wdSun);
+  TWeekOfDay = (wdNone, wdSun, wdMon, wdTue, wdWed, wdThu, wdFri, wdSat);
   PWeekSet = ^TWeekSet;
   TWeekSet = set of TWeekOfDay;
+
   PTimeRec = ^TTimeRec;
   TTimeRec = record                     //要与TTimeStamp结构相同！
     TimeOrLoop: DWORD;
     DateOrWeek: DWORD;
   end;
+  PTimeStamp = ^TTimeStamp;
 
 type
   TTaskMgr = class;
@@ -175,7 +177,7 @@ begin
       WakeUpPro(FContent);
     ttMsgTip:
       TPopTooltip.ShowMsg(FContent,
-        ExtractFilePath(ParamStr(0)) + 'OnTime.jpg', 10 * 1000);
+        ExtractFilePath(ParamStr(0)) + 'OnTime.jpg', 30 * 1000);
     ttShutdownPC: begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_SHUTDOWN or EWX_FORCE, 0); {关机}
@@ -213,26 +215,28 @@ begin
   FTimeType := timeType;
   case timeType of
     {　固定日期　}
-    ttDateTime: Caption := FormatDateTime('yyyy-MM-dd hh:mm:ss', PDateTime(@Value)^);
+    ttDateTime: Caption := FormatDateTime('yyyy-MM-dd hh:mm:ss',
+        TimeStampToDateTime(PTimeStamp(@Value)^));
     {　周期时间　}
     ttLoop, ttTime: begin
         weekSet := PWeekSet(@Value.DateOrWeek)^;
-        FIsWeek := TWeekOfDay(weekSet) > wdNone; { 周一到周日 }
-        if FIsWeek then begin
-          FWeekStr := '';
-          if wdMon in weekSet then FWeekStr := FWeekStr + '1#';
-          if wdTue in weekSet then FWeekStr := FWeekStr + '2#';
-          if wdWed in weekSet then FWeekStr := FWeekStr + '3#';
-          if wdThu in weekSet then FWeekStr := FWeekStr + '4#';
-          if wdFri in weekSet then FWeekStr := FWeekStr + '5#';
-          if wdSat in weekSet then FWeekStr := FWeekStr + '6#';
-          if wdSun in weekSet then FWeekStr := FWeekStr + '7#';
-        end;
+        FWeekStr := '';
+        if wdMon in weekSet then FWeekStr := FWeekStr + '1';
+        if wdTue in weekSet then FWeekStr := FWeekStr + '2';
+        if wdWed in weekSet then FWeekStr := FWeekStr + '3';
+        if wdThu in weekSet then FWeekStr := FWeekStr + '4';
+        if wdFri in weekSet then FWeekStr := FWeekStr + '5';
+        if wdSat in weekSet then FWeekStr := FWeekStr + '6';
+        if wdSun in weekSet then FWeekStr := FWeekStr + '7';
+        FIsWeek := FWeekStr <> '';
+        if FIsWeek then FWeekStr := FWeekStr + '^.';
+
         if FTimeType = ttLoop then begin
           FLoopTime := Value.TimeOrLoop;
           Caption := FWeekStr + IntToStr(FLoopTime);
         end else
-          Caption := FWeekStr + FormatDateTime('hh:mm:ss', PDateTime(@Value)^);
+          Caption := FWeekStr + FormatDateTime('hh:mm:ss',
+            TimeStampToDateTime(PTimeStamp(@Value)^));
       end;
   end;
 end;
@@ -357,36 +361,35 @@ procedure TTaskMgr.OnTimer;
 var
   i                 : Integer;
   Task              : TTask;
-  time1, time2      : TTimeStamp;
+  timeStamp         : TTimeStamp;
 begin
   if FItems.Count < 1 then Exit;
-
   for i := 0 to FItems.Count - 1 do begin
     Task := FItems[I].Data;
     if not Task.Checked or
       (Integer(Task.ExecNum) < 1) then Continue; //不可执行
 
+    timeStamp := DateTimeToTimeStamp(dateTime);
     case Task.TimeType of
       ttDateTime: begin                 //日期时间
-          time1 := DateTimeToTimeStamp(dateTime);
-          time2 := TTimeStamp(Task.TimeRec);
-          if (time1.Date <> time1.Date) or
-            (time1.Time div MSecsPerSec <> time2.Time div MSecsPerSec) then
+          if (timeStamp.Date <> Task.TimeRec.DateOrWeek) or
+            (timeStamp.Time div MSecsPerSec <>
+            Task.TimeRec.TimeOrLoop div MSecsPerSec) then
             Continue;
         end;
       ttLoop, ttTime: begin
-          time1 := DateTimeToTimeStamp(dateTime);
-          if Task.IsWeek then           { 星期 }
-            if not (TWeekOfDay(time1.Date mod 7 + 1) in
+          if Task.IsWeek then begin     { 星期 }
+            if not (TWeekOfDay(timeStamp.Date mod 7 + 1) in
               PWeekSet(@Task.TimeRec.DateOrWeek)^) then
               Continue;
-              
+          end;
+
           if Task.TimeType = ttLoop then begin //倒计时秒
             if Task.DecLoop > 0 then Continue;
           end else
           begin                         //时间
-            time2 := TTimeStamp(Task.TimeRec);
-            if time1.Time div MSecsPerSec <> time2.Time div MSecsPerSec then
+            if timeStamp.Time div MSecsPerSec <>
+              Task.TimeRec.TimeOrLoop div MSecsPerSec then
               Continue;
           end;
         end;

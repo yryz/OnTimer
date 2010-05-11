@@ -71,27 +71,28 @@ begin
   FToolTip := TToolTip.Create(Self);
   FToolTip.Interval := 3000;
   { 任务数据 }
-  if Assigned(FTask) then
+  if Assigned(Task) then
   begin
-    chkActive.Checked := FTask.Checked;
-    cbbType.ItemIndex := Integer(FTask.TaskType);
-    seExecNum.Value := FTask.ExecNum;
+    chkActive.Checked := Task.Checked;
+    cbbType.ItemIndex := Integer(Task.TaskType);
+    seExecNum.Value := Task.ExecNum;
 
-    case FTask.TimeType of
+    case Task.TimeType of
       ttLoop, ttTime: begin
-          if FTask.TimeType = ttLoop then begin
+          if Task.TimeType = ttLoop then begin
             seExecNum.Enabled := True;
             chkLoop.Checked := True;
-            edtTime.Text := IntToStr(FTask.TimeRec.TimeOrLoop);
+            edtTime.Text := IntToStr(Task.TimeRec.TimeOrLoop);
           end else begin
             seExecNum.Enabled := True;
             chkEveryDay.Checked := True;
-            edtTime.Text := FormatDateTime('hh:mm:ss', PDateTime(@FTask.TimeRec)^);
+            edtTime.Text := FormatDateTime('hh:mm:ss',
+              TimeStampToDateTime(PTimeStamp(@Task.TimeRec)^));
           end;
           { 星期数据要晚时间数据设置！！ }
-          if FTask.IsWeek then begin
+          if Task.IsWeek then begin
             chkWeek.Checked := True;
-            weekSet := PWeekSet(@FTask.TimeRec.DateOrWeek)^;
+            weekSet := PWeekSet(@Task.TimeRec.DateOrWeek)^;
             chkMon.Checked := wdMon in weekSet;
             chkTue.Checked := wdTue in weekSet;
             chkWed.Checked := wdWed in weekSet;
@@ -104,12 +105,13 @@ begin
 
       ttDateTime: begin
           seExecNum.Enabled := False;
-          edtTime.Text := FormatDateTime('yyyy-MM-dd hh:mm:ss', PDateTime(@FTask.TimeRec)^);
+          edtTime.Text := FormatDateTime('yyyy-MM-dd hh:mm:ss',
+            TimeStampToDateTime(PTimeStamp(@Task.TimeRec)^));
         end;
     end;
 
-    edtParam.Text := FTask.Param;
-    edtContent.Text := FTask.Content;
+    edtParam.Text := Task.Param;
+    edtContent.Text := Task.Content;
   end else
   begin
     seExecNum.Enabled := False;
@@ -125,6 +127,7 @@ var
   bErr, isAdd       : Boolean;
   taskType          : TTaskType;
   timeType          : TTimeType;
+  dateTime          : TDateTime;
   timeRec           : TTimeRec;
   weekSet           : TWeekSet;
 begin
@@ -140,27 +143,33 @@ begin
     //      Exit;
     //    end;
     timeType := ttLoop;
-    PWeekSet(@timeRec.DateOrWeek)^ := [wdNone];
   end else
-    if not TryStrToDateTime(edtTime.Text, PDateTime(@timeRec)^) then
+    if not TryStrToDateTime(edtTime.Text, dateTime) then
       bErr := true
     else begin                          { 时间、日期 }
       if chkEveryDay.Checked then begin
         timeType := ttTime;
-        PWeekSet(@timeRec.DateOrWeek)^ := [wdNone];
+        timeRec.TimeOrLoop := DateTimeToTimeStamp(dateTime).Time;
       end else
+      begin
         timeType := ttDateTime;
+        PTimeStamp(@timeRec)^ := DateTimeToTimeStamp(dateTime);
+      end;
     end;
+
   { 星期设置 }
-  if chkWeek.Checked then begin
+  if timeType <> ttDateTime then begin
     weekSet := [wdNone];
-    if chkMon.Checked then weekSet := weekSet + [wdMon];
-    if chkTue.Checked then weekSet := weekSet + [wdTue];
-    if chkWed.Checked then weekSet := weekSet + [wdWed];
-    if chkThu.Checked then weekSet := weekSet + [wdThu];
-    if chkFri.Checked then weekSet := weekSet + [wdFri];
-    if chkSat.Checked then weekSet := weekSet + [wdSat];
-    if chkSun.Checked then weekSet := weekSet + [wdSun];
+    if chkWeek.Checked then begin
+      if chkMon.Checked then weekSet := weekSet + [wdMon];
+      if chkTue.Checked then weekSet := weekSet + [wdTue];
+      if chkWed.Checked then weekSet := weekSet + [wdWed];
+      if chkThu.Checked then weekSet := weekSet + [wdThu];
+      if chkFri.Checked then weekSet := weekSet + [wdFri];
+      if chkSat.Checked then weekSet := weekSet + [wdSat];
+      if chkSun.Checked then weekSet := weekSet + [wdSun];
+    end;
+    timeRec.DateOrWeek := 0;            //清空
     PWeekSet(@timeRec.DateOrWeek)^ := weekSet;
   end;
 
@@ -184,7 +193,7 @@ end;
 
 procedure TfrmAddTask.chkEveryDayClick(Sender: TObject);
 begin
-  FToolTip.EndPopup;
+  if Self.Showing then FToolTip.EndPopup;
   { 初始状态 }
   chkLoop.Enabled := not chkEveryDay.Checked;
   chkEveryDay.Enabled := not chkLoop.Checked;
@@ -200,7 +209,8 @@ begin
     SetWindowLong(edtTime.Handle, GWL_STYLE,
       GetWindowLong(edtTime.Handle, GWL_STYLE) or ES_NUMBER);
 
-    FToolTip.Popup(edtTime.Handle, ttInformationIcon, '提示', '输入倒计时间(秒)');
+    if Self.Showing then
+      FToolTip.Popup(edtTime.Handle, ttInformationIcon, '提示', '输入倒计时间(秒)');
   end else
   begin
     SetWindowLong(edtTime.Handle, GWL_STYLE,

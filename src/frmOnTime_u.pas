@@ -111,6 +111,7 @@ begin
     MessageBox(Handle, '注册热键失败!', '任务计划', MB_ICONWARNING);
   g_TaskMgr := TTaskMgr.Create(lvTask);
   tmrOntimer.Enabled := True;
+  lvTask.DoubleBuffered := True;        //防止闪烁
 end;
 
 procedure TfrmOnTime.tmrOntimerTimer(Sender: TObject);

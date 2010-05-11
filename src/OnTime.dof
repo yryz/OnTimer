@@ -114,7 +114,7 @@ IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
 MinorVer=2
-Release=3
+Release=4
 Build=1
 Debug=0
 PreRelease=0
@@ -126,7 +126,7 @@ CodePage=936
 [Version Info Keys]
 CompanyName=HouSoft
 FileDescription=任务计划
-FileVersion=1.2.3.1
+FileVersion=1.2.4.1
 InternalName=
 LegalCopyright=厚建勇
 LegalTrademarks=
@@ -138,9 +138,10 @@ Comments=
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlSearchPath]
-Count=2
+Count=3
 Item0=..\Include;..\Include\GDIPlus
-Item1=..\Include;..\Include\GIDPlus
+Item1=$(DELPHI)\Lib\Debug;..\Include;..\Include\GDIPlus
+Item2=..\Include;..\Include\GIDPlus
 [HistoryLists\hlUnitOutputDirectory]
 Count=1
 Item0=z:\
