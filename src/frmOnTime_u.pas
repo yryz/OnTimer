@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Graphics, Classes, Forms,
   ExtCtrls, Controls, ComCtrls, ImgList, Menus, XPMan, ShellAPI,
-  TaskMgr_u;
+  TaskMgr_u, HouListView;
 
 const
   WM_ICON           = WM_USER + 10;
@@ -16,7 +16,7 @@ type
     PopMenuA: TPopupMenu;
     mniExit: TMenuItem;
     mniAbout: TMenuItem;
-    lvTask: TListView;
+    lvTask: THouListView;
     mniAdd: TMenuItem;
     mniDel: TMenuItem;
     mniEdit: TMenuItem;
@@ -42,10 +42,12 @@ type
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure mniExitClick(Sender: TObject);
     procedure lvTaskClick(Sender: TObject);
+    procedure lvTaskChecking(Item: TListItem; Checked: Boolean;
+      var Accept: Boolean);
   private
     procedure SysEvent(var Message: Tmessage); message WM_SYSCOMMAND;
     procedure TrayEvent(var Message: Tmessage); message WM_ICON;
-    procedure WMHotKey(var Msg: TMessage); message WM_HOTKEY;
+    procedure WMHotKey(var Msg: Tmessage); message WM_HOTKEY;
   public
   end;
 
@@ -110,6 +112,7 @@ begin
   if not RegisterHotKey(Handle, 0, MOD_CONTROL, VK_F1) then
     MessageBox(Handle, '◊¢≤·»»º¸ ß∞‹!', '»ŒŒÒº∆ªÆ', MB_ICONWARNING);
   g_TaskMgr := TTaskMgr.Create(lvTask);
+  g_TaskMgr.LoadTask;
   tmrOntimer.Enabled := True;
   lvTask.DoubleBuffered := True;        //∑¿÷π…¡À∏
 end;
@@ -189,7 +192,7 @@ end;
 
 procedure TfrmOnTime.mniExecClick(Sender: TObject);
 var
-  i                 : Integer;
+  i                 : integer;
   Task              : TTask;
 begin
   with lvTask.Items do
@@ -234,21 +237,23 @@ end;
 
 procedure TfrmOnTime.lvTaskClick(Sender: TObject);
 var
-  i                 : Integer;
+  i                 : integer;
 begin
-  with TListView(Sender).Items do
-    for i := 0 to Count - 1 do begin
-      if Item[i].Checked <> TTask(Item[i].Data).LastChecked then
-        g_TaskMgr.UpdateCheckState(Item[i].Data);
-    end;
+
 end;
 
-procedure TfrmOnTime.WMHotKey(var Msg: TMessage);
+procedure TfrmOnTime.WMHotKey(var Msg: Tmessage);
 begin
   if (Msg.LparamLo = MOD_CONTROL) and (Msg.LParamHi = VK_F1) then begin
     Show;
     SetActiveWindow(Handle);
   end;
+end;
+
+procedure TfrmOnTime.lvTaskChecking(Item: TListItem; Checked: Boolean;
+  var Accept: Boolean);
+begin
+  g_TaskMgr.UpdateCheckState(Item.Data, Checked);
 end;
 
 end.

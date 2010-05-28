@@ -17,7 +17,7 @@ object frmOnTime: TfrmOnTime
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13
-  object lvTask: TListView
+  object lvTask: THouListView
     Tag = 2
     Left = 0
     Top = 0
@@ -56,6 +56,7 @@ object frmOnTime: TfrmOnTime
     TabOrder = 0
     ViewStyle = vsReport
     OnClick = lvTaskClick
+    OnChecking = lvTaskChecking
   end
   object tmrOntimer: TTimer
     Enabled = False

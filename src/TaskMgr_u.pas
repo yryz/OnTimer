@@ -66,7 +66,6 @@ type
     FTimeRec: TTimeRec;                 //设定日期、时间、星期、倒计时
     FParam: string;
     FContent: string;
-    FLastChecked: Boolean;              //决定是否要把Checked状态写入数据库
     procedure SetContent(const Value: string);
     procedure SetParam(const Value: string);
     procedure SetTaskType(const Value: TTaskType);
@@ -81,25 +80,25 @@ type
     property Id: Integer read FId write FId;
     property ExecNum: DWORD read FExecNum write SetExecNum;
     property TaskType: TTaskType read FTaskType write SetTaskType;
-    property TimeType: TTimeType read FTimeType;
+    property timeType: TTimeType read FTimeType;
     property IsWeek: Boolean read FIsWeek;
     property TimeRec: TTimeRec read FTimeRec write FTimeRec;
     property Param: string read FParam write SetParam;
     property Content: string read FContent write SetContent;
-    property LastChecked: Boolean read FLastChecked write FLastChecked;
   end;
 
-  TTaskMgr = class
+  TTaskMgr = class(TObject)
   private
     FItems: TListItems;
+    FItemsLock: Boolean;
     FTaskDB: TSQLiteDatabase;
-    procedure LoadTask;
   public
     constructor Create(lvTask: TListView);
     destructor Destroy; override;
+    procedure LoadTask;
     function Make(bChecked: Boolean): TTask;
     procedure Update(isAdd: Boolean; Task: TTask);
-    procedure UpdateCheckState(Task: TTask);
+    procedure UpdateCheckState(Task: TTask; bChecked: Boolean);
     procedure UpdateOption;
     function DeleteSelected: Integer;
     procedure OnTimer(dateTime: TDateTime);
@@ -128,7 +127,7 @@ uses
 
 function FloatToInt23(Value: double): Integer;
 var
-  d                 : Double;
+  d                 : double;
 begin
   d := Value + DOUBLE_MAGIC;
   Result := PInteger(@d)^;
@@ -270,7 +269,6 @@ end;
 constructor TTaskMgr.Create;
 begin
   FItems := lvTask.Items;
-  LoadTask;
 end;
 
 destructor TTaskMgr.Destroy;
@@ -278,8 +276,8 @@ var
   I                 : Integer;
 begin
   if FItems.Count > 0 then
-    for i := FItems.Count - 1 downto 0 do
-      with FItems[i] do begin
+    for I := FItems.Count - 1 downto 0 do
+      with FItems[I] do begin
         TTask(Data).Free;
         Delete();
       end;
@@ -289,10 +287,14 @@ end;
 
 function TTaskMgr.Make;
 begin
-  Result := TTask.Create(FItems);
-  FItems.AddItem(Result);
-  Result.Checked := bChecked;
-  Result.LastChecked := bChecked;
+  FItemsLock := True;
+  try
+    Result := TTask.Create(FItems);
+    FItems.AddItem(Result);
+    Result.Checked := bChecked;
+  finally
+    FItemsLock := False;
+  end;
 end;
 
 procedure TTaskMgr.Update;
@@ -306,7 +308,7 @@ begin
     sql := SQL_UPDATE_TASK + IntToStr(Task.Id);
   try
     Table := TSQLiteTable.Create(FTaskDB, sql, [Task.Checked,
-      Integer(Task.TaskType), Integer(Task.TimeType), PInt64(@Task.TimeRec)^,
+      Integer(Task.TaskType), Integer(Task.timeType), PInt64(@Task.TimeRec)^,
         Task.Content, Task.Param, Task.ExecNum]);
     if isAdd then
       Task.Id := FTaskDB.GetLastInsertRowID;
@@ -315,14 +317,14 @@ begin
   end;
 end;
 
-procedure TTaskMgr.UpdateCheckState(Task: TTask);
+procedure TTaskMgr.UpdateCheckState;
 var
   Table             : TSQLiteTable;
 begin
+  if not FItemsLock then
   try
-    Task.LastChecked := not Task.LastChecked;
     Table := TSQLiteTable.Create(FTaskDB, SQL_UPDATE_TASK2 + IntToStr(Task.Id),
-      [Task.Checked]);
+      [bChecked]);
   finally
     Table.Free;
   end;
@@ -342,35 +344,35 @@ end;
 
 function TTaskMgr.DeleteSelected;
 var
-  i                 : Integer;
+  I                 : Integer;
 begin
   Result := -1;
   if FItems.Count < 1 then Exit;
 
-  for i := FItems.Count - 1 downto 0 do
-    with FItems[i] do
+  for I := FItems.Count - 1 downto 0 do
+    with FItems[I] do
       if Selected then begin
         if Assigned(FTaskDB) then
           FTaskDB.ExecSQL(SQL_DELETE_TASK + IntToStr(TTask(Data).FId));
         Delete;
-        Result := i;
+        Result := I;
       end;
 end;
 
 procedure TTaskMgr.OnTimer;
 var
-  i                 : Integer;
+  I                 : Integer;
   Task              : TTask;
   timeStamp         : TTimeStamp;
 begin
   if FItems.Count < 1 then Exit;
-  for i := 0 to FItems.Count - 1 do begin
+  for I := 0 to FItems.Count - 1 do begin
     Task := FItems[I].Data;
     if not Task.Checked or
       (Integer(Task.ExecNum) < 1) then Continue; //不可执行
 
     timeStamp := DateTimeToTimeStamp(dateTime);
-    case Task.TimeType of
+    case Task.timeType of
       ttDateTime: begin                 //日期时间
           if (timeStamp.Date <> Task.TimeRec.DateOrWeek) or
             (timeStamp.Time div MSecsPerSec <>
@@ -378,13 +380,13 @@ begin
             Continue;
         end;
       ttLoop, ttTime: begin
-          if Task.IsWeek then begin     { 星期 }
+          if Task.IsWeek then begin     // 星期
             if not (TWeekOfDay(timeStamp.Date mod 7 + 1) in
               PWeekSet(@Task.TimeRec.DateOrWeek)^) then
               Continue;
           end;
 
-          if Task.TimeType = ttLoop then begin //倒计时秒
+          if Task.timeType = ttLoop then begin //倒计时秒
             if Task.DecLoop > 0 then Continue;
           end else
           begin                         //时间
@@ -401,7 +403,7 @@ end;
 
 procedure TTaskMgr.LoadTask;
 var
-  i                 : Integer;
+  I                 : Integer;
   Task              : TTask;
   Table             : TSQLiteTable;
 begin
@@ -426,25 +428,30 @@ begin
         Table.Free;
 
         Table := TSQLiteTable.Create(FTaskDB, SQL_SELECT_TASKLIST, []);
-        with Table do
-          for i := 0 to RowCount - 1 do
-          begin
-            Task := Self.Make(Boolean(FieldAsInteger(1)));
-            Task.Id := FieldAsInteger(0);
-            Task.TaskType := TTaskType(FieldAsInteger(2));
-            Task.SetTime(TTimeType(FieldAsInteger(3)), TTimeRec(FieldAsInteger(4)));
-            Task.Content := FieldAsString(5);
-            Task.Param := FieldAsString(6);
-            Task.ExecNum := FieldAsInteger(7);
-            Next;
-          end;
+        FItems.BeginUpdate;
+        try
+          with Table do
+            for I := 0 to RowCount - 1 do
+            begin
+              Task := Self.Make(Boolean(FieldAsInteger(1)));
+              Task.Id := FieldAsInteger(0);
+              Task.TaskType := TTaskType(FieldAsInteger(2));
+              Task.SetTime(TTimeType(FieldAsInteger(3)), TTimeRec(FieldAsInteger(4)));
+              Task.Content := FieldAsString(5);
+              Task.Param := FieldAsString(6);
+              Task.ExecNum := FieldAsInteger(7);
+              Next;
+            end;
+        finally
+          FItems.EndUpdate;
+        end;
       finally
         Table.Free;
       end;
     end;
   except
     on E: Exception do begin
-      OutDebug('TTaskMgr.LoadTask Except! Exit!' + e.Message);
+      OutDebug('TTaskMgr.LoadTask Except! Exit!' + E.Message);
       MessageBox(0, PChar('读取数据库 ' + ONTIME_DB + ' 异常！'#13#10#13#10
         + '可以尝试删除此文件.也可向我反馈此信息。'), '提示', MB_ICONWARNING);
       PostQuitMessage(0);               //退出

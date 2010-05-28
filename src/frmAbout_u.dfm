@@ -34,7 +34,7 @@ object frmAbout: TfrmAbout
     Top = 122
     Width = 37
     Height = 13
-    Caption = 'Ver1.2d'
+    Caption = 'Ver1.2e'
   end
   object pnl1: TPanel
     Left = 8
