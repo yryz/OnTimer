@@ -95,6 +95,7 @@ begin
     WM_LBUTTONDBLCLK: begin
         Show;
         SetActiveWindow(Handle);
+        SetForegroundWindow(Handle);
       end;
 
     WM_RBUTTONDOWN: begin
@@ -247,6 +248,7 @@ begin
   if (Msg.LparamLo = MOD_CONTROL) and (Msg.LParamHi = VK_F1) then begin
     Show;
     SetActiveWindow(Handle);
+    SetForegroundWindow(Handle);
   end;
 end;
 
