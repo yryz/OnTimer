@@ -22,7 +22,7 @@ object frmOnTime: TfrmOnTime
     Left = 0
     Top = 0
     Width = 574
-    Height = 274
+    Height = 281
     Align = alClient
     BorderStyle = bsNone
     Checkboxes = True
@@ -55,7 +55,6 @@ object frmOnTime: TfrmOnTime
     SmallImages = ImageList1
     TabOrder = 0
     ViewStyle = vsReport
-    OnClick = lvTaskClick
     OnChecking = lvTaskChecking
   end
   object tmrOntimer: TTimer

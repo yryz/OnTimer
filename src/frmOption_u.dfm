@@ -4,8 +4,8 @@ object frmOption: TfrmOption
   BorderIcons = [biSystemMenu]
   BorderStyle = bsNone
   Caption = #35774#32622
-  ClientHeight = 132
-  ClientWidth = 250
+  ClientHeight = 148
+  ClientWidth = 267
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -23,19 +23,19 @@ object frmOption: TfrmOption
   object grpSBox: TGroupBox
     Left = 8
     Top = 8
-    Width = 233
-    Height = 113
-    Caption = #21457#36865#37038#20214#35774#32622'(SMTP)'
+    Width = 249
+    Height = 129
+    Caption = #35774#32622'(SMTP'#12289#28909#38190')'
     TabOrder = 0
     OnMouseDown = FormMouseDown
     object InfoLabel2: TLabel
       Left = 6
       Top = 24
-      Width = 46
+      Width = 67
       Height = 17
       Alignment = taRightJustify
       AutoSize = False
-      Caption = #26381#21153#22120':'
+      Caption = 'SMTP'#20027#26426':'
       Font.Charset = DEFAULT_CHARSET
       Font.Color = 13977088
       Font.Height = -11
@@ -45,12 +45,12 @@ object frmOption: TfrmOption
     end
     object InfoLabel3: TLabel
       Left = 6
-      Top = 56
-      Width = 46
+      Top = 50
+      Width = 67
       Height = 13
       Alignment = taRightJustify
       AutoSize = False
-      Caption = #36134' '#25143':'
+      Caption = 'SMTP'#36134#25143':'
       Font.Charset = DEFAULT_CHARSET
       Font.Color = 13977088
       Font.Height = -11
@@ -60,12 +60,27 @@ object frmOption: TfrmOption
     end
     object InfoLabel4: TLabel
       Left = 6
-      Top = 85
-      Width = 46
+      Top = 74
+      Width = 67
       Height = 13
       Alignment = taRightJustify
       AutoSize = False
-      Caption = #23494' '#30721':'
+      Caption = 'SMTP'#23494#30721':'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13977088
+      Font.Height = -11
+      Font.Name = 'MS Sans Serif'
+      Font.Style = []
+      ParentFont = False
+    end
+    object lbl1: TLabel
+      Left = 6
+      Top = 100
+      Width = 67
+      Height = 13
+      Alignment = taRightJustify
+      AutoSize = False
+      Caption = #31243#24207#28909#38190':'
       Font.Charset = DEFAULT_CHARSET
       Font.Color = 13977088
       Font.Height = -11
@@ -74,9 +89,9 @@ object frmOption: TfrmOption
       ParentFont = False
     end
     object edtServer: TEdit
-      Left = 57
+      Left = 75
       Top = 22
-      Width = 124
+      Width = 120
       Height = 21
       Hint = #22914'smtp.126.com'
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
@@ -85,17 +100,17 @@ object frmOption: TfrmOption
       TabOrder = 0
     end
     object edtUser: TEdit
-      Left = 57
-      Top = 52
-      Width = 124
+      Left = 75
+      Top = 46
+      Width = 120
       Height = 21
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       TabOrder = 2
     end
     object edtPass: TEdit
-      Left = 57
-      Top = 81
-      Width = 124
+      Left = 75
+      Top = 70
+      Width = 120
       Height = 21
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       PasswordChar = '*'
@@ -103,7 +118,7 @@ object frmOption: TfrmOption
       OnKeyPress = edtPassKeyPress
     end
     object sePort: TSpinEdit
-      Left = 185
+      Left = 201
       Top = 22
       Width = 43
       Height = 22
@@ -116,24 +131,33 @@ object frmOption: TfrmOption
       Value = 25
     end
     object btnOk: TButton
-      Left = 184
+      Left = 200
       Top = 51
       Width = 43
-      Height = 23
+      Height = 28
       Caption = #30830#23450
       ModalResult = 1
       TabOrder = 4
       OnClick = btnOkClick
     end
     object btnCancel: TButton
-      Left = 184
-      Top = 80
+      Left = 200
+      Top = 88
       Width = 43
-      Height = 23
+      Height = 28
       Cancel = True
       Caption = #21462#28040
       ModalResult = 2
       TabOrder = 5
+    end
+    object hk1: THotKey
+      Left = 75
+      Top = 97
+      Width = 120
+      Height = 19
+      HotKey = 16496
+      Modifiers = [hkCtrl]
+      TabOrder = 6
     end
   end
 end

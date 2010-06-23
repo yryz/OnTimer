@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Forms,
-  StdCtrls, Controls, Spin;
+  StdCtrls, Controls, Spin, ComCtrls;
 
 type
   TfrmOption = class(TForm)
@@ -18,6 +18,8 @@ type
     sePort: TSpinEdit;
     btnOk: TButton;
     btnCancel: TButton;
+    hk1: THotKey;
+    lbl1: TLabel;
     procedure btnOkClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormPaint(Sender: TObject);
@@ -40,21 +42,23 @@ uses
 
 procedure TfrmOption.btnOkClick(Sender: TObject);
 begin
-  g_SMTPOption.Server := edtServer.Text;
-  g_SMTPOption.Port := sePort.Value;
-  g_SMTPOption.UserName := edtUser.Text;
+  g_Option.SmtpServer := edtServer.Text;
+  g_Option.SmtpPort := sePort.Value;
+  g_Option.SmtpUser := edtUser.Text;
   if isPassChanged then
-    g_SMTPOption.Password := edtPass.Text;
+    g_Option.SmtpPass := edtPass.Text;
+  g_Option.ShortCut := hk1.HotKey;
   g_TaskMgr.UpdateOption;
 end;
 
 procedure TfrmOption.FormCreate(Sender: TObject);
 begin
-  edtServer.Text := g_SMTPOption.Server;
-  sePort.Value := g_SMTPOption.Port;
-  edtUser.Text := g_SMTPOption.UserName;
+  edtServer.Text := g_Option.SmtpServer;
+  sePort.Value := g_Option.SmtpPort;
+  edtUser.Text := g_Option.SmtpUser;
+  hk1.HotKey := g_Option.ShortCut;
   isPassChanged := False;
-  if g_SMTPOption.Password <> '' then edtPass.Text := '******';
+  if g_Option.SmtpPass <> '' then edtPass.Text := '******';
 end;
 
 procedure TfrmOption.FormPaint(Sender: TObject);
@@ -79,3 +83,4 @@ begin
 end;
 
 end.
+

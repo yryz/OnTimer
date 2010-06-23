@@ -41,14 +41,16 @@ type
     procedure PopMenuAPopup(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure mniExitClick(Sender: TObject);
-    procedure lvTaskClick(Sender: TObject);
     procedure lvTaskChecking(Item: TListItem; Checked: Boolean;
       var Accept: Boolean);
   private
     procedure SysEvent(var Message: Tmessage); message WM_SYSCOMMAND;
     procedure TrayEvent(var Message: Tmessage); message WM_ICON;
     procedure WMHotKey(var Msg: Tmessage); message WM_HOTKEY;
-  public
+  private
+    FHkKey: Word;
+    FHkShift: Word;
+    procedure SetHotKey(ShortCut: TShortCut);
   end;
 
 resourcestring
@@ -110,10 +112,9 @@ end;
 procedure TfrmOnTime.FormCreate(Sender: TObject);
 begin
   SetTryico;
-  if not RegisterHotKey(Handle, 0, MOD_CONTROL, VK_F1) then
-    MessageBox(Handle, '注册热键失败!', '任务计划', MB_ICONWARNING);
   g_TaskMgr := TTaskMgr.Create(lvTask);
   g_TaskMgr.LoadTask;
+  SetHotKey(g_Option.ShortCut);
   tmrOntimer.Enabled := True;
   lvTask.DoubleBuffered := True;        //防止闪烁
 end;
@@ -208,7 +209,9 @@ procedure TfrmOnTime.mniOptionClick(Sender: TObject);
 begin
   if not Assigned(frmOption) then
     frmOption := TfrmOption.Create(Application);
+  UnregisterHotKey(Handle, 0);
   frmOption.ShowModal;
+  SetHotKey(g_Option.ShortCut);
   FreeAndNil(frmOption);
 end;
 
@@ -236,19 +239,17 @@ begin
   Close;
 end;
 
-procedure TfrmOnTime.lvTaskClick(Sender: TObject);
-var
-  i                 : integer;
-begin
-
-end;
-
 procedure TfrmOnTime.WMHotKey(var Msg: Tmessage);
+var
+  pid               : DWORD;
 begin
-  if (Msg.LparamLo = MOD_CONTROL) and (Msg.LParamHi = VK_F1) then begin
-    Show;
-    SetActiveWindow(Handle);
-    SetForegroundWindow(Handle);
+  if (Msg.LParamLo = FHkShift) and (Msg.LParamHi = FHkKey) then begin
+    GetWindowThreadProcessId(GetActiveWindow, pId);
+    if pid <> GetCurrentProcessId then begin //防止设置时响应
+      Show;
+      SetActiveWindow(Handle);
+      SetForegroundWindow(Handle);
+    end;
   end;
 end;
 
@@ -256,6 +257,20 @@ procedure TfrmOnTime.lvTaskChecking(Item: TListItem; Checked: Boolean;
   var Accept: Boolean);
 begin
   g_TaskMgr.UpdateCheckState(Item.Data, Checked);
+end;
+
+procedure TfrmOnTime.SetHotKey(ShortCut: TShortCut);
+begin
+  FHkShift := 0;
+  FHkKey := ShortCut and not (scShift + scCtrl + scAlt);
+  if ShortCut and scShift <> 0 then FHkShift := MOD_SHIFT;
+  if ShortCut and scCtrl <> 0 then FHkShift := FHkShift or MOD_CONTROL;
+  if ShortCut and scAlt <> 0 then FHkShift := FHkShift or MOD_ALT;
+
+  UnRegisterHotKey(Handle, 0);
+  if not RegisterHotKey(Handle, 0, FHkShift, FHkKey) then
+    MessageBox(Handle, '热键注册失败,请更外其它热键组合再试试!',
+      '提示', MB_TOPMOST or MB_SystemModal);
 end;
 
 end.

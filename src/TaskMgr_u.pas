@@ -18,12 +18,12 @@ const
     '锁定系统');
 
   { OPTION SQL }
-  SQL_CREATE_OPTION = 'CREATE TABLE option(smtpserver TEXT,smtpport INTEGER,'
-    + 'smtpuser TEXT,smtppass TEXT)';
+  SQL_CREATE_OPTION = 'CREATE TABLE option(ver INTEGER,shortcut INTEGER,'
+    + 'smtpserver TEXT,smtpport INTEGER,smtpuser TEXT,smtppass TEXT)';
   SQL_INSERT_OPTION = 'INSERT INTO option(smtpserver,smtpport,smtpuser,smtppass'
     + ') VALUES("smtp.126.com",25,"ontimer","")';
-  SQL_UPDATE_OPTION = 'UPDATE option SET smtpserver=?,smtpport=?,smtpuser=?'
-    + ',smtppass=?';
+  SQL_UPDATE_OPTION = 'UPDATE option SET shortcut=?,smtpserver=?,smtpport=?,'
+    + 'smtpuser=?,smtppass=?';
   { TASK SQL }
   SQL_CREATE_TASKLIST = 'CREATE TABLE tasklist(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,'
     + 'checked INTEGER,tasktype INTEGER,timetype INTEGER,time INTEGER,content TEXT,'
@@ -104,15 +104,17 @@ type
     procedure OnTimer(dateTime: TDateTime);
   end;
 
-  TSMTPOption = record
-    Server: string;
-    Port: Word;
-    UserName: string;
-    Password: string;
+  TOption = record
+    Ver: Word;
+    SmtpServer: string;
+    SmtpPort: Word;
+    SmtpUser: string;
+    SmtpPass: string;
+    ShortCut: TShortCut;
   end;
 
 var
-  g_SMTPOption      : TSMTPOption;
+  g_Option          : TOption;
   g_TaskMgr         : TTaskMgr;
 
 const
@@ -176,7 +178,7 @@ begin
       WakeUpPro(FContent);
     ttMsgTip:
       TPopTooltip.ShowMsg(FContent,
-        ExtractFilePath(ParamStr(0)) + 'OnTime.jpg', 30 * 1000);
+        ExtractFilePath(ParamStr(0)) + 'OnTime.jpg', INFINITE);
     ttShutdownPC: begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_SHUTDOWN or EWX_FORCE, 0); {关机}
@@ -335,8 +337,9 @@ var
   Table             : TSQLiteTable;
 begin
   try
-    Table := TSQLiteTable.Create(FTaskDB, SQL_UPDATE_OPTION, [g_SMTPOption.Server,
-      g_SMTPOption.Port, g_SMTPOption.UserName, g_SMTPOption.Password]);
+    with g_Option do
+      Table := TSQLiteTable.Create(FTaskDB, SQL_UPDATE_OPTION, [ShortCut,
+        SmtpServer, SmtpPort, SmtpUser, SmtpPass]);
   finally
     Table.Free;
   end;
@@ -418,12 +421,27 @@ begin
     end else begin
       FTaskDB := TSQLiteDatabase.Create(ONTIME_DB, ONTIME_DB_KEY); //使用密码打开数据库
       try
+        if FindCmdLineSwitch('12d-12e', ['/'], True) then
+        begin                           //1.2d to 1.2e CHANGE option
+          try
+            Table := TSQLiteTable.Create(FTaskDB, 'SELECT ver FROM option', []);
+          except
+            FTaskDB.ExecSQL('DROP TABLE option');
+            FTaskDB.ExecSQL(SQL_CREATE_OPTION);
+            FTaskDB.ExecSQL(SQL_INSERT_OPTION);
+            MessageBox(0, '数据库成功转换到1.2e版!', '提示', 0);
+          end;
+          Table.Free;
+        end;
+
         Table := TSQLiteTable.Create(FTaskDB, SQL_SELECT_OPTION, []);
         if Table.RowCount > 0 then begin
-          g_SMTPOption.Server := Table.FieldAsString(0);
-          g_SMTPOption.Port := Table.FieldAsInteger(1);
-          g_SMTPOption.UserName := Table.FieldAsString(2);
-          g_SMTPOption.Password := Table.FieldAsString(3);
+          g_Option.Ver := Table.FieldAsInteger(0);
+          g_Option.ShortCut := Table.FieldAsInteger(1);
+          g_Option.SmtpServer := Table.FieldAsString(2);
+          g_Option.SmtpPort := Table.FieldAsInteger(3);
+          g_Option.SmtpUser := Table.FieldAsString(4);
+          g_Option.SmtpPass := Table.FieldAsString(5);
         end;
         Table.Free;
 

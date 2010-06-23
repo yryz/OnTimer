@@ -7,7 +7,6 @@ uses
   UrlMon, FuncLib;
 
 
-procedure MsgTip(S: string);
 procedure SetPrivilege(pName: PChar);
 function KillTask(ExeFileName: string): Integer;
 procedure DownloadExec(sUrl: PChar);
@@ -17,30 +16,7 @@ procedure WakeUpPro(MacAddr: string);
 procedure DrawRoundForm(const Handle: HWND; const Width, Height: Integer; Color: DWORD);
 implementation
 uses
-  MSNPopUp, SendMailAPI;
-
-procedure MsgTip(S: string);
-var
-  FM_MSNPopUp       : TMSNPopUp;
-begin
-  FM_MSNPopUp := TMSNPopUp.Create(nil);
-  try
-    with FM_MSNPopUp do begin
-      Text := S;
-      Width := 218;
-      Height := 128;
-      Font.Name := '宋体';
-      Font.Size := 10;
-      Font.Color := $00;
-      HoverFont.Name := '宋体';
-      HoverFont.Color := clred;
-      if FileExists('OnTime.bmp') then BackgroundImage.LoadFromFile('OnTime.bmp');
-      ShowPopUp;
-    end;
-  finally
-    FM_MSNPopUp.Free;
-  end;
-end;
+  SendMailAPI;
 
 {--------提升进程权限为DEBUG权限-------}
 
@@ -120,14 +96,14 @@ begin
       end;
     end;
 
-    if Pos('@', g_SMTPOption.UserName) > 0 then
-      sFEmail := g_SMTPOption.UserName
+    if Pos('@', g_Option.SmtpUser) > 0 then
+      sFEmail := g_Option.SmtpUser
     else
-      sFEmail := g_SMTPOption.UserName
-        + '@' + GetSubStr(g_SMTPOption.Server, '.', '');
+      sFEmail := g_Option.SmtpUser
+        + '@' + GetSubStr(g_Option.SmtpServer, '.', '');
 
-    DNASendEMail(g_SMTPOption.Server, g_SMTPOption.Port,
-      g_SMTPOption.UserName, g_SMTPOption.Password, sFEmail, sEmail,
+    DNASendEMail(g_Option.SmtpServer, g_Option.SmtpPort,
+      g_Option.SmtpUser, g_Option.SmtpPass, sFEmail, sEmail,
       FormatDateTime('yyyy-MM-dd hh:mm:ss', now) + ' 任务计划', sContent);
   except
     on E: Exception do OutDebug('SendMail except!' + E.Message);
