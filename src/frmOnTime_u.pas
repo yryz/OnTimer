@@ -244,12 +244,12 @@ var
   pid               : DWORD;
 begin
   if (Msg.LParamLo = FHkShift) and (Msg.LParamHi = FHkKey) then begin
-    GetWindowThreadProcessId(GetActiveWindow, pId);
-    if pid <> GetCurrentProcessId then begin //防止设置时响应
-      Show;
-      SetActiveWindow(Handle);
-      SetForegroundWindow(Handle);
-    end;
+    //GetWindowThreadProcessId(GetActiveWindow, pId);
+    //if pid <> GetCurrentProcessId then begin //防止设置时响应(消息提示窗口时，也会失效)
+    Show;
+    SetActiveWindow(Handle);
+    SetForegroundWindow(Handle);
+    //end;
   end;
 end;
 
