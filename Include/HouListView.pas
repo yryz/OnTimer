@@ -15,15 +15,16 @@ type
 
   THouListView = class(TListView)
   private
+    FIgnoreCheck: Boolean;
     FOnChecking: TOnChecking;
     procedure CNNotify(var Message: TWMNotify);
   protected
     procedure WndProc(var Message: TMessage); override;
   public
-    { Public declarations }
     constructor Create(AOwner: TComponent); override;
     destructor Destroy(); override;
   published
+    property IgnoreCheck: Boolean read FIgnoreCheck write FIgnoreCheck;
     property OnChecking: TOnChecking read FOnChecking write FOnChecking;
   end;
 
@@ -51,11 +52,11 @@ begin
           if (uOldState <> 0) then      //ÓÐ¸ü¸Ä
           begin
             if uNewState and LVIS_CHECKED <> 0 then begin
-              if Assigned(FOnChecking) then
+              if not FIgnoreCheck and Assigned(FOnChecking) then
                 FOnChecking(Items[iItem], True, b);
             end else
               if uNewState and LVIS_UNCHECKED <> 0 then begin
-                if Assigned(FOnChecking) then
+                if not FIgnoreCheck and Assigned(FOnChecking) then
                   FOnChecking(Items[iItem], False, b);
               end;
           end;

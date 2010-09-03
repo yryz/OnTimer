@@ -3,17 +3,17 @@ unit TaskMgr_u;
 interface
 uses
   Windows, SysUtils, Classes, Graphics, ExtCtrls, ComCtrls,
-  ShellAPI, SQLite3, SQLiteTable3;
+  ShellAPI, SQLite3, SQLiteTable3, HouListView;
 
 type
   TTaskType = (ttExec, ttParamExec, ttDownExec, ttKillProcess, ttCmdExec,
     ttWakeUp, ttMsgTip, ttSendEmail, ttSendKey, ttShutdownPC, ttRebootPC,
     ttLogoutPC, ttLockPC);
 const
-  ONTIME_DB = 'OnTime.db';
-  ONTIME_DB_KEY = '';
-  TASK_TYPE_STR: array[TTaskType] of string[8] =
-  ('普通运行', '参数运行', '下载运行', '结束进程', '执行DOS', '网络唤醒',
+  ONTIME_DB         = 'OnTime.db';
+  ONTIME_DB_KEY     = '';
+  TASK_TYPE_STR     : array[TTaskType] of string[8] =
+    ('普通运行', '参数运行', '下载运行', '结束进程', '执行DOS', '网络唤醒',
     '消息提示', '发送邮件', '模拟按键', '关闭系统', '重启系统', '注销登陆',
     '锁定系统');
 
@@ -30,12 +30,12 @@ const
     + 'param TEXT,execnum INTEGER)';
   SQL_SELECT_OPTION = 'SELECT * FROM option';
   SQL_SELECT_TASKLIST = 'SELECT * FROM tasklist';
-  SQL_INSERT_TASK = 'INSERT INTO tasklist(checked,tasktype,timetype,time,'
+  SQL_INSERT_TASK   = 'INSERT INTO tasklist(checked,tasktype,timetype,time,'
     + 'content,param,execnum) VALUES(?,?,?,?,?,?,?)';
-  SQL_UPDATE_TASK = 'UPDATE tasklist SET checked=?,tasktype=?,timetype=?,time=?,'
+  SQL_UPDATE_TASK   = 'UPDATE tasklist SET checked=?,tasktype=?,timetype=?,time=?,'
     + 'content=?,param=?,execnum=? WHERE id=';
-  SQL_UPDATE_TASK2 = 'UPDATE tasklist SET checked=? WHERE id=';
-  SQL_DELETE_TASK = 'DELETE FROM tasklist WHERE id=';
+  SQL_UPDATE_TASK2  = 'UPDATE tasklist SET checked=? WHERE id=';
+  SQL_DELETE_TASK   = 'DELETE FROM tasklist WHERE id=';
 
 type
   TTimeType = (ttDateTime, ttTime, ttLoop, ttWeekOfTime, ttWeekOfLoop);
@@ -44,7 +44,7 @@ type
   TWeekSet = set of TWeekOfDay;
 
   PTimeRec = ^TTimeRec;
-  TTimeRec = record //要与TTimeStamp结构相同！
+  TTimeRec = record                     //要与TTimeStamp结构相同！
     TimeOrLoop: DWORD;
     DateOrWeek: DWORD;
   end;
@@ -54,16 +54,16 @@ type
   TTaskMgr = class;
 
   PTask = ^TTask;
-  TTask = class(TListItem) //TListView中添加此Item
+  TTask = class(TListItem)              //TListView中添加此Item
   private
     FId: Integer;
-    FExecNum: DWORD; //可执行次数
+    FExecNum: DWORD;                    //可执行次数
     FTaskType: TTaskType;
-    FTimeType: TTimeType; //记时类型
-    FLoopTime: DWORD; //倒计时计数
-    FIsWeek: Boolean; //是否作星期判断，只对时间、倒计时有效
+    FTimeType: TTimeType;               //记时类型
+    FLoopTime: DWORD;                   //倒计时计数
+    FIsWeek: Boolean;                   //是否作星期判断，只对时间、倒计时有效
     FWeekStr: string;
-    FTimeRec: TTimeRec; //设定日期、时间、星期、倒计时
+    FTimeRec: TTimeRec;                 //设定日期、时间、星期、倒计时
     FParam: string;
     FContent: string;
     procedure SetContent(const Value: string);
@@ -74,7 +74,7 @@ type
     constructor Create(Items: TListItems);
     destructor Destroy; override;
     procedure Execute;
-    function DecLoop: Integer; //调用一次，减一秒
+    function DecLoop: Integer;          //调用一次，减一秒
     procedure SetTime(timeType: TTimeType; Value: TTimeRec);
   published
     property Id: Integer read FId write FId;
@@ -89,11 +89,11 @@ type
 
   TTaskMgr = class(TObject)
   private
+    FLv: THouListView;
     FItems: TListItems;
-    FItemsLock: Boolean;
     FTaskDB: TSQLiteDatabase;
   public
-    constructor Create(lvTask: TListView);
+    constructor Create(lvTask: THouListView);
     destructor Destroy; override;
     procedure LoadTask;
     function Make(bChecked: Boolean): TTask;
@@ -114,12 +114,12 @@ type
   end;
 
 var
-  g_Option: TOption;
-  g_TaskMgr: TTaskMgr;
+  g_Option          : TOption;
+  g_TaskMgr         : TTaskMgr;
 
 const
-  DOUBLE_MAGIC = 6755399441055744.0; //Double + 1.5*2^52
-  MAX_LOOP_VALUE = $3FFFFF; //DOUBLE_MAGIC 只能处理这 23位
+  DOUBLE_MAGIC      = 6755399441055744.0; //Double + 1.5*2^52
+  MAX_LOOP_VALUE    = $3FFFFF;          //DOUBLE_MAGIC 只能处理这 23位
 
 function FloatToInt23(Value: double): Integer;
 
@@ -129,7 +129,7 @@ uses
 
 function FloatToInt23(Value: double): Integer;
 var
-  d: double;
+  d                 : double;
 begin
   d := Value + DOUBLE_MAGIC;
   Result := PInteger(@d)^;
@@ -140,11 +140,11 @@ end;
 constructor TTask.Create;
 begin
   inherited Create(Items);
-  SubItems.Add(''); //时间
-  SubItems.Add(''); //类型
-  SubItems.Add(''); //内容
-  SubItems.Add(''); //附加参数
-  SubItems.Add(''); //可执行次数
+  SubItems.Add('');                     //时间
+  SubItems.Add('');                     //类型
+  SubItems.Add('');                     //内容
+  SubItems.Add('');                     //附加参数
+  SubItems.Add('');                     //可执行次数
   Data := Self;
 end;
 
@@ -155,7 +155,7 @@ end;
 
 procedure TTask.Execute;
 var
-  dwThID: DWORD;
+  dwThID            : DWORD;
 begin
   case FTaskType of
     ttExec:
@@ -210,7 +210,7 @@ end;
 
 procedure TTask.SetTime;
 var
-  weekSet: TWeekSet;
+  weekSet           : TWeekSet;
 begin
   FTimeRec := Value;
   FTimeType := timeType;
@@ -270,12 +270,13 @@ end;
 
 constructor TTaskMgr.Create;
 begin
+  FLv := lvTask;
   FItems := lvTask.Items;
 end;
 
 destructor TTaskMgr.Destroy;
 var
-  I: Integer;
+  I                 : Integer;
 begin
   if FItems.Count > 0 then
     for I := FItems.Count - 1 downto 0 do
@@ -289,20 +290,20 @@ end;
 
 function TTaskMgr.Make;
 begin
-  FItemsLock := True;
+  FLv.IgnoreCheck := True;
   try
     Result := TTask.Create(FItems);
     FItems.AddItem(Result);
     Result.Checked := bChecked;
   finally
-    FItemsLock := False;
+    FLv.IgnoreCheck := False;
   end;
 end;
 
 procedure TTaskMgr.Update;
 var
-  sql: string;
-  Table: TSQLiteTable;
+  sql               : string;
+  Table             : TSQLiteTable;
 begin
   if isAdd then
     sql := SQL_INSERT_TASK
@@ -321,9 +322,8 @@ end;
 
 procedure TTaskMgr.UpdateCheckState;
 var
-  Table: TSQLiteTable;
+  Table             : TSQLiteTable;
 begin
-  if not FItemsLock then
   try
     Table := TSQLiteTable.Create(FTaskDB, SQL_UPDATE_TASK2 + IntToStr(Task.Id),
       [bChecked]);
@@ -334,7 +334,7 @@ end;
 
 procedure TTaskMgr.UpdateOption;
 var
-  Table: TSQLiteTable;
+  Table             : TSQLiteTable;
 begin
   try
     with g_Option do
@@ -347,7 +347,7 @@ end;
 
 function TTaskMgr.DeleteSelected;
 var
-  I: Integer;
+  I                 : Integer;
 begin
   Result := -1;
   if FItems.Count < 1 then Exit;
@@ -364,9 +364,9 @@ end;
 
 procedure TTaskMgr.OnTimer;
 var
-  I: Integer;
-  Task: TTask;
-  timeStamp: TTimeStamp;
+  I                 : Integer;
+  Task              : TTask;
+  timeStamp         : TTimeStamp;
 begin
   if FItems.Count < 1 then Exit;
   for I := 0 to FItems.Count - 1 do begin
@@ -376,14 +376,14 @@ begin
 
     timeStamp := DateTimeToTimeStamp(dateTime);
     case Task.timeType of
-      ttDateTime: begin //日期时间
+      ttDateTime: begin                 //日期时间
           if (timeStamp.Date <> Task.TimeRec.DateOrWeek) or
             (timeStamp.Time div MSecsPerSec <>
             Task.TimeRec.TimeOrLoop div MSecsPerSec) then
             Continue;
         end;
       ttLoop, ttTime: begin
-          if Task.IsWeek then begin // 星期
+          if Task.IsWeek then begin     // 星期
             if not (TWeekOfDay(timeStamp.Date mod 7 + 1) in
               PWeekSet(@Task.TimeRec.DateOrWeek)^) then
               Continue;
@@ -392,7 +392,7 @@ begin
           if Task.timeType = ttLoop then begin //倒计时秒
             if Task.DecLoop > 0 then Continue;
           end else
-          begin //时间
+          begin                         //时间
             if timeStamp.Time div MSecsPerSec <>
               Task.TimeRec.TimeOrLoop div MSecsPerSec then
               Continue;
@@ -406,9 +406,9 @@ end;
 
 procedure TTaskMgr.LoadTask;
 var
-  I: Integer;
-  Task: TTask;
-  Table: TSQLiteTable;
+  I                 : Integer;
+  Task              : TTask;
+  Table             : TSQLiteTable;
 begin
   try
     if not FileExists(ONTIME_DB) then begin
@@ -422,7 +422,7 @@ begin
       FTaskDB := TSQLiteDatabase.Create(ONTIME_DB, ONTIME_DB_KEY); //使用密码打开数据库
       try
         if FindCmdLineSwitch('12d-12e', ['/'], True) then
-        begin //1.2d to 1.2e CHANGE option
+        begin                           //1.2d to 1.2e CHANGE option
           try
             Table := TSQLiteTable.Create(FTaskDB, 'SELECT ver FROM option', []);
           except
@@ -472,7 +472,7 @@ begin
       OutDebug('TTaskMgr.LoadTask Except! Exit!' + E.Message);
       MessageBox(0, PChar('读取数据库 ' + ONTIME_DB + ' 异常！'#13#10#13#10
         + '可以尝试删除此文件.也可向我反馈此信息。'), '提示', MB_ICONWARNING);
-      PostQuitMessage(0); //退出
+      PostQuitMessage(0);               //退出
     end;
   end;
 end;

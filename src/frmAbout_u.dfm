@@ -32,9 +32,9 @@ object frmAbout: TfrmAbout
   object lblVer: TLabel
     Left = 10
     Top = 122
-    Width = 37
+    Width = 34
     Height = 13
-    Caption = 'Ver1.2e'
+    Caption = 'Ver1.2f'
   end
   object pnl1: TPanel
     Left = 8
