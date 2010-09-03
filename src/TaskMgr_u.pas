@@ -293,7 +293,7 @@ begin
   FLv.IgnoreCheck := True;
   try
     Result := TTask.Create(FItems);
-    FItems.AddItem(Result);
+    FItems.AddItem(Result, 0);
     Result.Checked := bChecked;
   finally
     FLv.IgnoreCheck := False;

@@ -1,8 +1,8 @@
 object frmOnTime: TfrmOnTime
-  Left = 395
-  Top = 230
-  Width = 582
-  Height = 308
+  Left = 278
+  Top = 207
+  Width = 605
+  Height = 335
   Caption = 'HOU'#20219#21153#35745#21010
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -21,8 +21,8 @@ object frmOnTime: TfrmOnTime
     Tag = 2
     Left = 0
     Top = 0
-    Width = 574
-    Height = 281
+    Width = 597
+    Height = 308
     Align = alClient
     BorderStyle = bsNone
     Checkboxes = True
@@ -37,8 +37,8 @@ object frmOnTime: TfrmOnTime
         Width = 68
       end
       item
-        AutoSize = True
         Caption = #20869#23481
+        Width = 218
       end
       item
         Caption = #21442#25968
@@ -55,6 +55,7 @@ object frmOnTime: TfrmOnTime
     SmallImages = ImageList1
     TabOrder = 0
     ViewStyle = vsReport
+    IgnoreCheck = False
     OnChecking = lvTaskChecking
   end
   object tmrOntimer: TTimer
