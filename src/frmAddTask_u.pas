@@ -21,7 +21,7 @@ type
     InfoLabel1: TLabel;
     edtContent: TEdit;
     lbl1: TLabel;
-    lbl2: TLabel;
+    lblParam: TLabel;
     edtParam: TEdit;
     chkActive: TCheckBox;
     chkWeek: TCheckBox;
@@ -46,6 +46,15 @@ type
     constructor Create(Task: TTask);
   end;
 
+const
+  DATETIME_FORMAT_SETTINGS: TFormatSettings = (
+    DateSeparator: '-';
+    TimeSeparator: ':';
+    ShortDateFormat: 'yyyy-MM-dd';
+    LongDateFormat: 'yyyy-MM-dd hh:mm:ss';
+    ShortTimeFormat: 'hh:mm';
+    LongTimeFormat: 'hh:mm:ss');
+
 var
   frmAddTask        : TfrmAddTask;
 
@@ -53,7 +62,6 @@ implementation
 uses
   Proc_u;
 {$R *.dfm}
-
 
 constructor TfrmAddTask.Create(Task: TTask);
 var
@@ -78,19 +86,24 @@ begin
     seExecNum.Value := Task.ExecNum;
 
     case Task.TimeType of
-      ttLoop, ttTime: begin
-          if Task.TimeType = ttLoop then begin
+      ttLoop, ttTime:
+        begin
+          if Task.TimeType = ttLoop then
+          begin
             seExecNum.Enabled := True;
             chkLoop.Checked := True;
             edtTime.Text := IntToStr(Task.TimeRec.TimeOrLoop);
-          end else begin
+          end
+          else
+          begin
             seExecNum.Enabled := True;
             chkEveryDay.Checked := True;
-            edtTime.Text := FormatDateTime('hh:mm:ss',
+            edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongTimeFormat,
               TimeStampToDateTime(PTimeStamp(@Task.TimeRec)^));
           end;
           { 星期数据要晚时间数据设置！！ }
-          if Task.IsWeek then begin
+          if Task.IsWeek then
+          begin
             chkWeek.Checked := True;
             weekSet := PWeekSet(@Task.TimeRec.DateOrWeek)^;
             chkMon.Checked := wdMon in weekSet;
@@ -103,29 +116,29 @@ begin
           end;
         end;
 
-      ttDateTime: begin
+      ttDateTime:
+        begin
           seExecNum.Enabled := False;
-          edtTime.Text := FormatDateTime('yyyy-MM-dd hh:mm:ss',
+          edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat,
             TimeStampToDateTime(PTimeStamp(@Task.TimeRec)^));
         end;
     end;
 
     edtParam.Text := Task.Param;
     edtContent.Text := Task.Content;
-  end else
+  end
+  else
   begin
     seExecNum.Enabled := False;
-    edtTime.Text := FormatDateTime('yyyy-MM-dd hh:mm:ss', now);
+    edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat, now);
   end;
 
   cbbTypeChange(cbbType);
 end;
 
-
 procedure TfrmAddTask.btnOkClick(Sender: TObject);
 var
   bErr, isAdd       : Boolean;
-  taskType          : TTaskType;
   timeType          : TTimeType;
   dateTime          : TDateTime;
   timeRec           : TTimeRec;
@@ -134,7 +147,8 @@ begin
   bErr := False;
 
   timeType := ttDateTime;
-  if chkLoop.Checked then begin         { 倒计时 }
+  if chkLoop.Checked then
+  begin                                 { 倒计时 }
     if not TryStrToInt(edtTime.Text, Integer(timeRec.TimeOrLoop)) then
       bErr := true;
     //    if loopTime > MAX_LOOP_VALUE then begin
@@ -143,44 +157,58 @@ begin
     //      Exit;
     //    end;
     timeType := ttLoop;
-  end else
-    if not TryStrToDateTime(edtTime.Text, dateTime) then
-      bErr := true
-    else begin                          { 时间、日期 }
-      if chkEveryDay.Checked then begin
-        timeType := ttTime;
-        timeRec.TimeOrLoop := DateTimeToTimeStamp(dateTime).Time;
-      end else
-      begin
-        timeType := ttDateTime;
-        PTimeStamp(@timeRec)^ := DateTimeToTimeStamp(dateTime);
-      end;
+  end
+  else if TryStrToDateTime(edtTime.Text, dateTime, DATETIME_FORMAT_SETTINGS) then
+  begin                                 { 时间、日期 }
+    if chkEveryDay.Checked then
+    begin
+      timeType := ttTime;
+      timeRec.TimeOrLoop := DateTimeToTimeStamp(dateTime).Time;
+    end
+    else
+    begin
+      timeType := ttDateTime;
+      PTimeStamp(@timeRec)^ := DateTimeToTimeStamp(dateTime);
     end;
+  end
+  else
+    bErr := True;
 
-  { 星期设置 }
-  if timeType <> ttDateTime then begin
+  if timeType <> ttDateTime then
+  begin
     weekSet := [wdNone];
-    if chkWeek.Checked then begin
-      if chkMon.Checked then weekSet := weekSet + [wdMon];
-      if chkTue.Checked then weekSet := weekSet + [wdTue];
-      if chkWed.Checked then weekSet := weekSet + [wdWed];
-      if chkThu.Checked then weekSet := weekSet + [wdThu];
-      if chkFri.Checked then weekSet := weekSet + [wdFri];
-      if chkSat.Checked then weekSet := weekSet + [wdSat];
-      if chkSun.Checked then weekSet := weekSet + [wdSun];
+    if chkWeek.Checked then
+    begin
+      if chkMon.Checked then
+        weekSet := weekSet + [wdMon];
+      if chkTue.Checked then
+        weekSet := weekSet + [wdTue];
+      if chkWed.Checked then
+        weekSet := weekSet + [wdWed];
+      if chkThu.Checked then
+        weekSet := weekSet + [wdThu];
+      if chkFri.Checked then
+        weekSet := weekSet + [wdFri];
+      if chkSat.Checked then
+        weekSet := weekSet + [wdSat];
+      if chkSun.Checked then
+        weekSet := weekSet + [wdSun];
     end;
     timeRec.DateOrWeek := 0;            //清空
     PWeekSet(@timeRec.DateOrWeek)^ := weekSet;
   end;
 
-  if bErr then begin
+  if bErr then
+  begin
     FToolTip.Popup(edtTime.Handle, ttWarningIcon, '提示', '时间格式有误!');
     Exit;
   end;
 
   isAdd := not Assigned(FTask);
-  if isAdd then FTask := g_TaskMgr.Make(chkActive.Checked)
-  else FTask.Checked := chkActive.Checked;
+  if isAdd then
+    FTask := g_TaskMgr.Make(chkActive.Checked)
+  else
+    FTask.Checked := chkActive.Checked;
   FTask.TaskType := TTaskType(cbbType.ItemIndex);
   FTask.ExecNum := seExecNum.Value;
   FTask.SetTime(timeType, timeRec);
@@ -193,15 +221,18 @@ end;
 
 procedure TfrmAddTask.chkEveryDayClick(Sender: TObject);
 begin
-  if Self.Showing then FToolTip.EndPopup;
+  if Self.Showing then
+    FToolTip.EndPopup;
   { 初始状态 }
   chkLoop.Enabled := not chkEveryDay.Checked;
   chkEveryDay.Enabled := not chkLoop.Checked;
   chkWeek.Enabled := chkEveryDay.Checked or chkLoop.Checked;
-  if not chkWeek.Enabled then chkWeek.Checked := False;
+  if not chkWeek.Enabled then
+    chkWeek.Checked := False;
 
   { 循环 }
-  if chkLoop.Checked then begin
+  if chkLoop.Checked then
+  begin
     edtTime.Text := '60';
     edtTime.MaxLength := 9;             //999 999 999 < MAX_DWORD
     chkEveryDay.Checked := False;
@@ -211,20 +242,23 @@ begin
 
     if Self.Showing then
       FToolTip.Popup(edtTime.Handle, ttInformationIcon, '提示', '输入倒计时间(秒)');
-  end else
+  end
+  else
   begin
     SetWindowLong(edtTime.Handle, GWL_STYLE,
       GetWindowLong(edtTime.Handle, GWL_STYLE) and not ES_NUMBER);
 
-    if chkEveryDay.Checked then begin   { 每日 }
-      edtTime.Text := FormatDateTime('hh:mm:ss', now);
+    if chkEveryDay.Checked then
+    begin                               { 每日 }
+      edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongTimeFormat, now);
       edtTime.MaxLength := 8;
       chkLoop.Checked := False;
       seExecNum.Enabled := True;
     end
-    else begin                          { 日期 }
+    else
+    begin                               { 日期 }
       seExecNum.Enabled := False;
-      edtTime.Text := FormatDateTime('yyyy-MM-dd hh:mm:ss', now);
+      edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat, now);
       edtTime.MaxLength := 19;
     end;
   end;
@@ -241,7 +275,8 @@ begin
   chkSat.Enabled := chkWeek.Checked;
   chkSun.Enabled := chkWeek.Checked;
 
-  if chkWeek.Checked then begin
+  if chkWeek.Checked then
+  begin
     if not chkLoop.Enabled and not chkEveryDay.Enabled then
     begin                               { 处于日期模式 }
       chkLoop.Enabled := True;
@@ -252,13 +287,13 @@ end;
 
 procedure TfrmAddTask.cbbTypeChange(Sender: TObject);
 begin
-  edtParam.Enabled := TTaskType(TComboBox(Sender).ItemIndex) in [ttSendEmail];
-  edtContent.Enabled := not (TTaskType(TComboBox(Sender).ItemIndex) in
-    [ttShutdownPC, ttRebootPC, ttLogoutPC, ttLockPC]);
-  if edtParam.Enabled then
-    edtParam.Color := clWindow
+  if TTaskType(TComboBox(Sender).ItemIndex) in [ttSendEmail] then
+    lblParam.Caption := '参数:'
   else
-    edtParam.Color := clBtnFace;
+    lblParam.Caption := '备注:';
+
+  edtContent.Enabled := not (TTaskType(TComboBox(Sender).ItemIndex) in
+    [ttShutdownSys, ttRebootSys, ttLogoutSys, ttLockSys, ttSuspendSys]);
 
   if edtContent.Enabled then
     edtContent.Color := clWindow

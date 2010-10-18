@@ -74,10 +74,14 @@ var
 begin
   Result := '';
   LenSrc := length(Source);
-  if LenSrc mod 3 = 0 then Times := LenSrc div 3
-  else Times := LenSrc div 3 + 1;
-  for i := 0 to Times - 1 do begin
-    if LenSrc >= (3 + i * 3) then begin
+  if LenSrc mod 3 = 0 then
+    Times := LenSrc div 3
+  else
+    Times := LenSrc div 3 + 1;
+  for i := 0 to Times - 1 do
+  begin
+    if LenSrc >= (3 + i * 3) then
+    begin
       x1 := BaseTable[(ord(Source[1 + i * 3]) shr 2) + 1];
       xt := (ord(Source[1 + i * 3]) shl 4) and 48;
       xt := xt or (ord(Source[2 + i * 3]) shr 4);
@@ -88,7 +92,8 @@ begin
       xt := (ord(Source[3 + i * 3]) and 63);
       x4 := BaseTable[xt + 1];
     end
-    else if LenSrc >= (2 + i * 3) then begin
+    else if LenSrc >= (2 + i * 3) then
+    begin
       x1 := BaseTable[(ord(Source[1 + i * 3]) shr 2) + 1];
       xt := (ord(Source[1 + i * 3]) shl 4) and 48;
       xt := xt or (ord(Source[2 + i * 3]) shr 4);
@@ -96,7 +101,9 @@ begin
       xt := (ord(Source[2 + i * 3]) shl 2) and 60;
       x3 := BaseTable[xt + 1];
       x4 := '=';
-    end else begin
+    end
+    else
+    begin
       x1 := BaseTable[(ord(Source[1 + i * 3]) shr 2) + 1];
       xt := (ord(Source[1 + i * 3]) shl 4) and 48;
       x2 := BaseTable[xt + 1];
@@ -115,8 +122,10 @@ var
 begin
   HostEnt := gethostbyname(PChar(Name));
   FillChar(InAddr, SizeOf(InAddr), 0);
-  if HostEnt <> nil then begin
-    with InAddr, HostEnt^ do begin
+  if HostEnt <> nil then
+  begin
+    with InAddr, HostEnt^ do
+    begin
       S_un_b.s_b1 := h_addr^[0];
       S_un_b.s_b2 := h_addr^[1];
       S_un_b.s_b3 := h_addr^[2];
@@ -136,7 +145,8 @@ var
 begin
   err := WSAStartup($0101, wsadata);
   FSocket := socket(PF_INET, SOCK_STREAM, IPPROTO_IP);
-  if FSocket = invalid_socket then begin
+  if FSocket = invalid_socket then
+  begin
     Result := False;
     Exit;
   end;
@@ -144,11 +154,13 @@ begin
   SockAddrIn.sin_family := PF_INET;
   SockAddrIn.sin_port := htons(port);
   err := connect(FSocket, SockAddrIn, SizeOf(SockAddrIn));
-  if err = 0 then begin
+  if err = 0 then
+  begin
     sock := FSocket;
     Result := True;
   end
-  else begin
+  else
+  begin
     Result := False;
   end;
 end;
@@ -191,7 +203,8 @@ begin
   assignFile(f, 'SendMail.log');
   rewrite(f);
   Result := False;
-  if StartNet(sSmtp, wPort, FSocket) then begin
+  if StartNet(sSmtp, wPort, FSocket) then
+  begin
     writeln(f, GetData(FSocket));
     SendData(FSocket, 'HELO ' + sUser + CRLF);
     writeln(f, GetData(FSocket));
@@ -217,7 +230,8 @@ begin
     SendData(FSocket, 'QUIT' + CRLF);
     writeln(f, GetData(FSocket));
     StopNet(FSocket);
-    if res <> SOCKET_ERROR then begin
+    if res <> SOCKET_ERROR then
+    begin
       Result := True;
     end;
   end;

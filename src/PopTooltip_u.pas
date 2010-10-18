@@ -130,13 +130,15 @@ begin
   { 主窗体 }
   if not RegWindowClassed then
     RegWindowClassed := RegWindowClass;
-  if RegWindowClassed then begin
+  if RegWindowClassed then
+  begin
     FHandle := CreateWindowEx(WS_EX_TOPMOST or WS_EX_TOOLWINDOW,
       PChar(FWndClass), '任务消息', WS_POPUP,
       -POP_WIN_WIDTH, -POP_WIN_WIDTH, POP_WIN_WIDTH, POP_WIN_HEIGH, { 动态调整 }
       0, 0, Hinstance, nil);
 
-    if FHandle = 0 then raise Exception.Create('Create Windows Error!');
+    if FHandle = 0 then
+      raise Exception.Create('Create Windows Error!');
 
     { 设置样式 }
     SetWindowLong(FHandle, GWL_WNDPROC, Longint(MakeObjectInstance(WndProc)));
@@ -154,15 +156,18 @@ end;
 
 destructor TPopTooltip.Destroy;
 begin
-  if Assigned(FImage) then FreeAndNil(FImage);
-  if Assigned(FGraph) then FreeAndNil(FGraph);
+  if Assigned(FImage) then
+    FreeAndNil(FImage);
+  if Assigned(FGraph) then
+    FreeAndNil(FGraph);
   Classes.DeallocateHWnd(FHandle);
   inherited Destroy;
 end;
 
 procedure TPopTooltip.WndProc(var Msg: TMessage);
 begin
-  with Msg do begin
+  with Msg do
+  begin
     case Msg of
       WM_ERASEBKGND:
         begin
@@ -173,54 +178,74 @@ begin
             GDITextOut(FGraph, 10, 30, POP_WIN_WIDTH - 2 * 10, POP_WIN_HEIGH - 40, 9,
               StringAlignmentNear, FMsg);
         end;
-      WM_LBUTTONDOWN: begin
+      WM_LBUTTONDOWN:
+        begin
           //OutputDebugString(PChar(IntToStr(LParamLo)+'|'+IntToStr(LParamHi)));
           if (LParamLo >= FWidth - 10)
-            and (LParamHi < 10) then begin { 点击关闭图标 }
+            and (LParamHi < 10) then
+          begin                         { 点击关闭图标 }
             FIsQuitAnimate := True;
             SetTimer(FHandle, TIMER_ANIMATE, 10, nil);
-          end else begin                { 拖动 }
+          end
+          else
+          begin                         { 拖动 }
             ReleaseCapture;
             PostMessage(FHandle, WM_SYSCOMMAND, $F012, 0);
           end;
         end;
-      WM_DESTROY: begin
+      WM_DESTROY:
+        begin
           SetWindowLong(FHandle, GWL_WNDPROC, LongInt(@DefWindowProc)); //一定要
           Self.Free;
         end;
-      WM_MOUSEFIRST: begin              { 取消自动关闭 }
-          if FTimer > 0 then begin
+      WM_MOUSEFIRST:
+        begin                           { 取消自动关闭 }
+          if FTimer > 0 then
+          begin
             KillTimer(FHandle, FTimer);
             FTimer := 0;
           end;
         end;
-      WM_TIMER: begin                   { 自动关闭 }
+      WM_TIMER:
+        begin                           { 自动关闭 }
           case WParam of
-            TIMER_CLOSE: begin
+            TIMER_CLOSE:
+              begin
                 KillTimer(FHandle, WParam);
                 FIsQuitAnimate := True;
                 SetTimer(FHandle, TIMER_ANIMATE, 10, nil);
               end;
-            TIMER_ANIMATE: begin
-                if not FIsQuitAnimate then begin
-                  if FWidth < POP_WIN_WIDTH then begin
+            TIMER_ANIMATE:
+              begin
+                if not FIsQuitAnimate then
+                begin
+                  if FWidth < POP_WIN_WIDTH then
+                  begin
                     Inc(FWidth, 15);
-                    if FWidth > POP_WIN_WIDTH then FWidth := POP_WIN_WIDTH;
+                    if FWidth > POP_WIN_WIDTH then
+                      FWidth := POP_WIN_WIDTH;
                     FHeight := Round(FWidth * (POP_WIN_HEIGH / POP_WIN_WIDTH));
                     FLeft := FRight - FWidth;
                     FTop := FBottom - FHeight;
                     SetWindowPos(FHandle, 0, FLeft, FTop, FWidth, FHeight, 0);
-                  end else
+                  end
+                  else
                     KillTimer(FHandle, WParam);
-                end else begin
-                  if FWidth > 0 then begin
+                end
+                else
+                begin
+                  if FWidth > 0 then
+                  begin
                     Dec(FWidth, 20);
-                    if FWidth < 0 then FWidth := 0;
+                    if FWidth < 0 then
+                      FWidth := 0;
                     FHeight := Round(FWidth * (POP_WIN_HEIGH / POP_WIN_WIDTH));
                     FLeft := FRight - FWidth;
                     FTop := FBottom - FHeight;
                     SetWindowPos(FHandle, 0, FLeft, FTop, FWidth, FHeight, 0);
-                  end else begin
+                  end
+                  else
+                  begin
                     KillTimer(FHandle, WParam);
                     PostMessage(FHandle, WM_CLOSE, 0, 0);
                   end;

@@ -6,7 +6,6 @@ uses
   Windows, SysUtils, Winsock, Graphics, TlHelp32, ShellAPI, TaskMgr_u,
   UrlMon, FuncLib;
 
-
 procedure SetPrivilege(pName: PChar);
 function KillTask(ExeFileName: string): Integer;
 procedure DownloadExec(sUrl: PChar);
@@ -53,7 +52,8 @@ begin
   FSnapshotHandle := CreateToolhelp32Snapshot(TH32CS_SnapProcess, 0); //获取进程列表
   FProcessEntry32.dwSize := SizeOf(FProcessEntry32);
   ContinueLoop := Process32First(FSnapshotHandle, FProcessEntry32);
-  while integer(ContinueLoop) <> 0 do begin
+  while integer(ContinueLoop) <> 0 do
+  begin
     if ((UpperCase(ExtractFileName(FProcessEntry32.szExeFile)) = UpperCase(ExeFileName))
       or (UpperCase(FProcessEntry32.szExeFile) = UpperCase(ExeFileName))) then
       result := integer(TerminateProcess(OpenProcess(Process_Terminate, BOOL(0), FProcessEntry32.th32ProcessID), 0));
@@ -86,10 +86,12 @@ begin
   try
     sEmail := Task.Param;
     sContent := Task.Content;
-    if FileExists(sContent) then begin
+    if FileExists(sContent) then
+    begin
       f := FileOpen(sContent, fmOpenRead or fmShareDenyNone);
-      if Integer(f) > 0 then begin
-        len := GetFileSize(f, nil);
+      if Integer(f) > 0 then
+      begin
+        len := Windows.GetFileSize(f, nil);
         SetLength(sContent, len);
         FileRead(f, PChar(@sContent[1])^, len);
         FileClose(f);
@@ -106,7 +108,8 @@ begin
       g_Option.SmtpUser, g_Option.SmtpPass, sFEmail, sEmail,
       FormatDateTime('yyyy-MM-dd hh:mm:ss', now) + ' 任务计划', sContent);
   except
-    on E: Exception do OutDebug('SendMail except!' + E.Message);
+    on E: Exception do
+      OutDebug('SendMail except!' + E.Message);
   end;
   ExitThread(0);
 end;
@@ -122,16 +125,19 @@ var
   MagicAddr         : array[0..5] of Byte;
   MagicData         : array[0..101] of Byte;
 begin
-  for i := 0 to 5 do MagicAddr[i] := StrToInt('$' + copy(MacAddr, i * 3 + 1, 2));
+  for i := 0 to 5 do
+    MagicAddr[i] := StrToInt('$' + copy(MacAddr, i * 3 + 1, 2));
   try
     WSAStartup($0101, WSAData);
     MSocket := socket(AF_INET, SOCK_DGRAM, IPPROTO_IP); //创建一个UPD数据报SOCKET.
-    if MSocket = INVALID_SOCKET then exit;
+    if MSocket = INVALID_SOCKET then
+      exit;
     i := 1;
     setsockopt(MSocket, SOL_SOCKET, SO_BROADCAST, PChar(@i), SizeOf(i)); //设置广播
     FillChar(MagicData, SizeOf(MagicData), $FF);
     i := 6;
-    while i < SizeOf(MagicData) do begin
+    while i < SizeOf(MagicData) do
+    begin
       Move(MagicAddr, Pointer(Longint(@MagicData) + i)^, 6);
       Inc(i, 6);
     end;
@@ -141,7 +147,8 @@ begin
     closesocket(MSocket);
     WSACleanup;
   except
-    on E: Exception do OutDebug('WakeUpPro ' + MacAddr + ' except!' + E.Message);
+    on E: Exception do
+      OutDebug('WakeUpPro ' + MacAddr + ' except!' + E.Message);
   end;
 end;
 

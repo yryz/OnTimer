@@ -359,33 +359,40 @@ begin
         vtChar, vtWideChar:
         begin
           case Bindings[I].VType of
-            vtString: begin             // ShortString
+            vtString:
+              begin                     // ShortString
                 AnsiStr := Bindings[I].VString^;
                 DataPtr := PAnsiChar(AnsiStr);
                 DataSize := Length(AnsiStr) + 1;
               end;
-            vtPChar: begin
+            vtPChar:
+              begin
                 DataPtr := Bindings[I].VPChar;
                 DataSize := -1;
               end;
-            vtAnsiString: begin
+            vtAnsiString:
+              begin
                 AnsiStrPtr := PAnsiString(@Bindings[I].VAnsiString);
                 DataPtr := PAnsiChar(AnsiStrPtr^);
                 DataSize := Length(AnsiStrPtr^) + 1;
               end;
-            vtPWideChar: begin
+            vtPWideChar:
+              begin
                 DataPtr := PAnsiChar(UTF8Encode(WideString(Bindings[I].VPWideChar)));
                 DataSize := -1;
               end;
-            vtWideString: begin
+            vtWideString:
+              begin
                 DataPtr := PAnsiChar(UTF8Encode(PWideString(@Bindings[I].VWideString)^));
                 DataSize := -1;
               end;
-            vtChar: begin
+            vtChar:
+              begin
                 DataPtr := PAnsiChar(string(Bindings[I].VChar));
                 DataSize := 2;
               end;
-            vtWideChar: begin
+            vtWideChar:
+              begin
                 DataPtr := PAnsiChar(UTF8Encode(WideString(Bindings[I].VWideChar)));
                 DataSize := -1;
               end;
@@ -893,20 +900,17 @@ begin
                 if DeclaredColType = nil then
                   thisColType^ := Sqlite3_ColumnType(stmt, i) //use the actual column type instead
                   //seems to be needed for last_insert_rowid
+                else if (DeclaredColType = 'INTEGER') or (DeclaredColType = 'BOOLEAN') then
+                  thisColType^ := dtInt
+                else if (DeclaredColType = 'NUMERIC') or
+                  (DeclaredColType = 'FLOAT') or
+                  (DeclaredColType = 'DOUBLE') or
+                  (DeclaredColType = 'REAL') then
+                  thisColType^ := dtNumeric
+                else if DeclaredColType = 'BLOB' then
+                  thisColType^ := dtBlob
                 else
-                  if (DeclaredColType = 'INTEGER') or (DeclaredColType = 'BOOLEAN') then
-                    thisColType^ := dtInt
-                  else
-                    if (DeclaredColType = 'NUMERIC') or
-                      (DeclaredColType = 'FLOAT') or
-                      (DeclaredColType = 'DOUBLE') or
-                      (DeclaredColType = 'REAL') then
-                      thisColType^ := dtNumeric
-                    else
-                      if DeclaredColType = 'BLOB' then
-                        thisColType^ := dtBlob
-                      else
-                        thisColType^ := dtStr;
+                  thisColType^ := dtStr;
                 fColTypes.Add(thiscoltype);
               end;
               fResults := TList.Create;
@@ -917,42 +921,39 @@ begin
               ActualColType := Sqlite3_ColumnType(stmt, i);
               if (ActualColType = SQLITE_NULL) then
                 fResults.Add(nil)
-              else
-                if pInteger(fColTypes[i])^ = dtInt then
-                begin
-                  new(thisintvalue);
-                  thisintvalue^ := Sqlite3_ColumnInt64(stmt, i);
-                  fResults.Add(thisintvalue);
-                end
+              else if pInteger(fColTypes[i])^ = dtInt then
+              begin
+                new(thisintvalue);
+                thisintvalue^ := Sqlite3_ColumnInt64(stmt, i);
+                fResults.Add(thisintvalue);
+              end
+              else if pInteger(fColTypes[i])^ = dtNumeric then
+              begin
+                new(thisdoublevalue);
+                thisdoublevalue^ := Sqlite3_ColumnDouble(stmt, i);
+                fResults.Add(thisdoublevalue);
+              end
+              else if pInteger(fColTypes[i])^ = dtBlob then
+              begin
+                iNumBytes := Sqlite3_ColumnBytes(stmt, i);
+                if iNumBytes = 0 then
+                  thisblobvalue := nil
                 else
-                  if pInteger(fColTypes[i])^ = dtNumeric then
-                  begin
-                    new(thisdoublevalue);
-                    thisdoublevalue^ := Sqlite3_ColumnDouble(stmt, i);
-                    fResults.Add(thisdoublevalue);
-                  end
-                  else
-                    if pInteger(fColTypes[i])^ = dtBlob then
-                    begin
-                      iNumBytes := Sqlite3_ColumnBytes(stmt, i);
-                      if iNumBytes = 0 then
-                        thisblobvalue := nil
-                      else
-                      begin
-                        thisblobvalue := TMemoryStream.Create;
-                        thisblobvalue.position := 0;
-                        ptr := Sqlite3_ColumnBlob(stmt, i);
-                        thisblobvalue.writebuffer(ptr^, iNumBytes);
-                      end;
-                      fResults.Add(thisblobvalue);
-                    end
-                    else
-                    begin
-                      new(thisstringvalue);
-                      ptrValue := Sqlite3_ColumnText(stmt, i);
-                      setstring(thisstringvalue^, ptrvalue, strlen(ptrvalue));
-                      fResults.Add(thisstringvalue);
-                    end;
+                begin
+                  thisblobvalue := TMemoryStream.Create;
+                  thisblobvalue.position := 0;
+                  ptr := Sqlite3_ColumnBlob(stmt, i);
+                  thisblobvalue.writebuffer(ptr^, iNumBytes);
+                end;
+                fResults.Add(thisblobvalue);
+              end
+              else
+              begin
+                new(thisstringvalue);
+                ptrValue := Sqlite3_ColumnText(stmt, i);
+                setstring(thisstringvalue^, ptrvalue, strlen(ptrvalue));
+                fResults.Add(thisstringvalue);
+              end;
             end;
           end;
         SQLITE_BUSY:
@@ -1104,11 +1105,10 @@ begin
     raise ESqliteException.Create('Table is at End of File');
   if (self.fResults[(self.frow * self.fColCount) + I] = nil) then
     Result := nil
+  else if pInteger(self.fColTypes[I])^ = dtBlob then
+    Result := TMemoryStream(self.fResults[(self.frow * self.fColCount) + I])
   else
-    if pInteger(self.fColTypes[I])^ = dtBlob then
-      Result := TMemoryStream(self.fResults[(self.frow * self.fColCount) + I])
-    else
-      raise ESqliteException.Create('Not a Blob field');
+    raise ESqliteException.Create('Not a Blob field');
 end;
 
 function TSqliteTable.FieldAsBlobText(I: cardinal): string;
@@ -1142,14 +1142,12 @@ begin
     raise ESqliteException.Create('Table is at End of File');
   if (self.fResults[(self.frow * self.fColCount) + I] = nil) then
     Result := 0
+  else if pInteger(self.fColTypes[I])^ = dtInt then
+    Result := pInt64(self.fResults[(self.frow * self.fColCount) + I])^
+  else if pInteger(self.fColTypes[I])^ = dtNumeric then
+    Result := trunc(strtofloat(pString(self.fResults[(self.frow * self.fColCount) + I])^))
   else
-    if pInteger(self.fColTypes[I])^ = dtInt then
-      Result := pInt64(self.fResults[(self.frow * self.fColCount) + I])^
-    else
-      if pInteger(self.fColTypes[I])^ = dtNumeric then
-        Result := trunc(strtofloat(pString(self.fResults[(self.frow * self.fColCount) + I])^))
-      else
-        raise ESqliteException.Create('Not an integer or numeric field');
+    raise ESqliteException.Create('Not an integer or numeric field');
 end;
 
 function TSqliteTable.FieldAsDouble(I: cardinal): double;
@@ -1158,14 +1156,12 @@ begin
     raise ESqliteException.Create('Table is at End of File');
   if (self.fResults[(self.frow * self.fColCount) + I] = nil) then
     Result := 0
+  else if pInteger(self.fColTypes[I])^ = dtInt then
+    Result := pInt64(self.fResults[(self.frow * self.fColCount) + I])^
+  else if pInteger(self.fColTypes[I])^ = dtNumeric then
+    Result := pDouble(self.fResults[(self.frow * self.fColCount) + I])^
   else
-    if pInteger(self.fColTypes[I])^ = dtInt then
-      Result := pInt64(self.fResults[(self.frow * self.fColCount) + I])^
-    else
-      if pInteger(self.fColTypes[I])^ = dtNumeric then
-        Result := pDouble(self.fResults[(self.frow * self.fColCount) + I])^
-      else
-        raise ESqliteException.Create('Not an integer or numeric field');
+    raise ESqliteException.Create('Not an integer or numeric field');
 end;
 
 function TSqliteTable.FieldAsString(I: cardinal): string;
@@ -1312,23 +1308,23 @@ begin
   Result := '';
   MemStream := self.FieldAsBlob(I);
   if MemStream <> nil then
-  try
-    if MemStream.Size > 0 then
-    begin
-      MemStream.position := 0;
+    try
+      if MemStream.Size > 0 then
+      begin
+        MemStream.position := 0;
 {$IFDEF UNICODE}
-      Buffer := AnsiStralloc(MemStream.Size + 1);
+        Buffer := AnsiStralloc(MemStream.Size + 1);
 {$ELSE}
-      Buffer := Stralloc(MemStream.Size + 1);
+        Buffer := Stralloc(MemStream.Size + 1);
 {$ENDIF}
-      MemStream.readbuffer(Buffer[0], MemStream.Size);
-      (Buffer + MemStream.Size)^ := chr(0);
-      SetString(Result, Buffer, MemStream.size);
-      strdispose(Buffer);
-    end;
-  finally
-    MemStream.Free;
-  end
+        MemStream.readbuffer(Buffer[0], MemStream.Size);
+        (Buffer + MemStream.Size)^ := chr(0);
+        SetString(Result, Buffer, MemStream.size);
+        strdispose(Buffer);
+      end;
+    finally
+      MemStream.Free;
+    end
 end;
 
 function TSQLiteUniTable.FieldAsDouble(I: cardinal): double;
@@ -1410,5 +1406,4 @@ begin
   Result := not fEOF;
 end;
 end.
-
 

@@ -7,15 +7,14 @@ uses
 
 type
   TTaskType = (ttExec, ttParamExec, ttDownExec, ttKillProcess, ttCmdExec,
-    ttWakeUp, ttMsgTip, ttSendEmail, ttSendKey, ttShutdownPC, ttRebootPC,
-    ttLogoutPC, ttLockPC);
+    ttWakeUp, ttMsgTip, ttSendEmail, ttSendKey, ttShutdownSys, ttRebootSys,
+    ttLogoutSys, ttLockSys, ttSuspendSys);
 const
-  ONTIME_DB         = 'OnTime.db';
   ONTIME_DB_KEY     = '';
   TASK_TYPE_STR     : array[TTaskType] of string[8] =
     ('普通运行', '参数运行', '下载运行', '结束进程', '执行DOS', '网络唤醒',
     '消息提示', '发送邮件', '模拟按键', '关闭系统', '重启系统', '注销登陆',
-    '锁定系统');
+    '锁定系统', '系统待机');
 
   { OPTION SQL }
   SQL_CREATE_OPTION = 'CREATE TABLE option(ver INTEGER,shortcut INTEGER,'
@@ -123,6 +122,9 @@ const
 
 function FloatToInt23(Value: double): Integer;
 
+function SetSuspendState(Hibernate, ForceCritical, DisableWakeEvent: Boolean): Boolean;
+stdcall; external 'PowrProf.dll'
+
 implementation
 uses
   sndkey32, FuncLib, Proc_u, PopTooltip_u;
@@ -164,7 +166,8 @@ begin
       WinExec(PChar(FContent), SW_SHOW);
     ttDownExec:
       CloseHandle(BeginThread(nil, 0, @DownloadExec, PChar(FContent), 0, dwThID));
-    ttKillProcess: begin
+    ttKillProcess:
+      begin
         SetPrivilege('SeDebugPrivilege');
         KillTask(PChar(FContent));
       end;
@@ -178,20 +181,28 @@ begin
       WakeUpPro(FContent);
     ttMsgTip:
       TPopTooltip.ShowMsg(FContent,
-        ExtractFilePath(ParamStr(0)) + 'OnTime.jpg', INFINITE);
-    ttShutdownPC: begin
+        ExtractFilePath(ParamStr(0)) + 'OnTimer.jpg', INFINITE);
+    ttShutdownSys:
+      begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_SHUTDOWN or EWX_FORCE, 0); {关机}
       end;
-    ttRebootPC: begin
+    ttRebootSys:
+      begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_REBOOT or EWX_FORCE, 0); {重启}
       end;
-    ttLogoutPC: begin
+    ttLogoutSys:
+      begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_LOGOFF or EWX_FORCE, 0); {注销}
       end;
-    ttLockPC: LockWorkStation;
+    ttLockSys: LockWorkStation;
+    ttSuspendSys:
+      begin
+        SetPrivilege('SeShutdownPrivilege');
+        SetSuspendState(False, False, False); {待机}
+      end;
   end;
 
   ImageIndex := 1;
@@ -219,23 +230,34 @@ begin
     ttDateTime: Caption := FormatDateTime('yyyy-MM-dd hh:mm:ss',
         TimeStampToDateTime(PTimeStamp(@Value)^));
     {　周期时间　}
-    ttLoop, ttTime: begin
+    ttLoop, ttTime:
+      begin
         weekSet := PWeekSet(@Value.DateOrWeek)^;
         FWeekStr := '';
-        if wdMon in weekSet then FWeekStr := FWeekStr + '1';
-        if wdTue in weekSet then FWeekStr := FWeekStr + '2';
-        if wdWed in weekSet then FWeekStr := FWeekStr + '3';
-        if wdThu in weekSet then FWeekStr := FWeekStr + '4';
-        if wdFri in weekSet then FWeekStr := FWeekStr + '5';
-        if wdSat in weekSet then FWeekStr := FWeekStr + '6';
-        if wdSun in weekSet then FWeekStr := FWeekStr + '7';
+        if wdMon in weekSet then
+          FWeekStr := FWeekStr + '1';
+        if wdTue in weekSet then
+          FWeekStr := FWeekStr + '2';
+        if wdWed in weekSet then
+          FWeekStr := FWeekStr + '3';
+        if wdThu in weekSet then
+          FWeekStr := FWeekStr + '4';
+        if wdFri in weekSet then
+          FWeekStr := FWeekStr + '5';
+        if wdSat in weekSet then
+          FWeekStr := FWeekStr + '6';
+        if wdSun in weekSet then
+          FWeekStr := FWeekStr + '7';
         FIsWeek := FWeekStr <> '';
-        if FIsWeek then FWeekStr := FWeekStr + '^.';
+        if FIsWeek then
+          FWeekStr := FWeekStr + '^.';
 
-        if FTimeType = ttLoop then begin
+        if FTimeType = ttLoop then
+        begin
           FLoopTime := Value.TimeOrLoop;
           Caption := FWeekStr + IntToStr(FLoopTime);
-        end else
+        end
+        else
           Caption := FWeekStr + FormatDateTime('hh:mm:ss',
             TimeStampToDateTime(PTimeStamp(@Value)^));
       end;
@@ -280,11 +302,13 @@ var
 begin
   if FItems.Count > 0 then
     for I := FItems.Count - 1 downto 0 do
-      with FItems[I] do begin
+      with FItems[I] do
+      begin
         TTask(Data).Free;
         Delete();
       end;
-  if Assigned(FTaskDB) then FTaskDB.Free;
+  if Assigned(FTaskDB) then
+    FTaskDB.Free;
   inherited;
 end;
 
@@ -350,11 +374,13 @@ var
   I                 : Integer;
 begin
   Result := -1;
-  if FItems.Count < 1 then Exit;
+  if FItems.Count < 1 then
+    Exit;
 
   for I := FItems.Count - 1 downto 0 do
     with FItems[I] do
-      if Selected then begin
+      if Selected then
+      begin
         if Assigned(FTaskDB) then
           FTaskDB.ExecSQL(SQL_DELETE_TASK + IntToStr(TTask(Data).FId));
         Delete;
@@ -368,30 +394,39 @@ var
   Task              : TTask;
   timeStamp         : TTimeStamp;
 begin
-  if FItems.Count < 1 then Exit;
-  for I := 0 to FItems.Count - 1 do begin
+  if FItems.Count < 1 then
+    Exit;
+  for I := 0 to FItems.Count - 1 do
+  begin
     Task := FItems[I].Data;
     if not Task.Checked or
-      (Integer(Task.ExecNum) < 1) then Continue; //不可执行
+      (Integer(Task.ExecNum) < 1) then
+      Continue;                         //不可执行
 
     timeStamp := DateTimeToTimeStamp(dateTime);
     case Task.timeType of
-      ttDateTime: begin                 //日期时间
+      ttDateTime:
+        begin                           //日期时间
           if (timeStamp.Date <> Task.TimeRec.DateOrWeek) or
             (timeStamp.Time div MSecsPerSec <>
             Task.TimeRec.TimeOrLoop div MSecsPerSec) then
             Continue;
         end;
-      ttLoop, ttTime: begin
-          if Task.IsWeek then begin     // 星期
+      ttLoop, ttTime:
+        begin
+          if Task.IsWeek then
+          begin                         // 星期
             if not (TWeekOfDay(timeStamp.Date mod 7 + 1) in
               PWeekSet(@Task.TimeRec.DateOrWeek)^) then
               Continue;
           end;
 
-          if Task.timeType = ttLoop then begin //倒计时秒
-            if Task.DecLoop > 0 then Continue;
-          end else
+          if Task.timeType = ttLoop then
+          begin                         //倒计时秒
+            if Task.DecLoop > 0 then
+              Continue;
+          end
+          else
           begin                         //时间
             if timeStamp.Time div MSecsPerSec <>
               Task.TimeRec.TimeOrLoop div MSecsPerSec then
@@ -409,17 +444,23 @@ var
   I                 : Integer;
   Task              : TTask;
   Table             : TSQLiteTable;
+  sDbPath           : string;
 begin
   try
-    if not FileExists(ONTIME_DB) then begin
-      FTaskDB := TSQLiteDatabase.Create(ONTIME_DB, ONTIME_DB_KEY); //使用密码创建数据库
+    sDbPath := ExtractFilePath(ParamStr(0)) + 'OnTimer.db';
+
+    if not FileExists(sDbPath) then
+    begin
+      FTaskDB := TSQLiteDatabase.Create(sDbPath, ONTIME_DB_KEY); //使用密码创建数据库
       FTaskDB.BeginTransaction;
       FTaskDB.ExecSQL(SQL_CREATE_OPTION);
       FTaskDB.ExecSQL(SQL_INSERT_OPTION);
       FTaskDB.ExecSQL(SQL_CREATE_TASKLIST);
       FTaskDB.Commit;
-    end else begin
-      FTaskDB := TSQLiteDatabase.Create(ONTIME_DB, ONTIME_DB_KEY); //使用密码打开数据库
+    end
+    else
+    begin
+      FTaskDB := TSQLiteDatabase.Create(sDbPath, ONTIME_DB_KEY); //使用密码打开数据库
       try
         if FindCmdLineSwitch('12d-12e', ['/'], True) then
         begin                           //1.2d to 1.2e CHANGE option
@@ -435,7 +476,8 @@ begin
         end;
 
         Table := TSQLiteTable.Create(FTaskDB, SQL_SELECT_OPTION, []);
-        if Table.RowCount > 0 then begin
+        if Table.RowCount > 0 then
+        begin
           g_Option.Ver := Table.FieldAsInteger(0);
           g_Option.ShortCut := Table.FieldAsInteger(1);
           g_Option.SmtpServer := Table.FieldAsString(2);
@@ -468,15 +510,18 @@ begin
       end;
     end;
   except
-    on E: Exception do begin
+    on E: Exception do
+    begin
       OutDebug('TTaskMgr.LoadTask Except! Exit!' + E.Message);
-      MessageBox(0, PChar('读取数据库 ' + ONTIME_DB + ' 异常！'#13#10#13#10
-        + '可以尝试删除此文件.也可向我反馈此信息。'), '提示', MB_ICONWARNING);
+      if MessageBox(0, PChar('读取数据库 ' + sDbPath + ' 异常！'#13#10#13#10
+        + '可以尝试删除此文件.是否要向作者反馈此信息?'), '提示',
+        MB_ICONWARNING or MB_YESNO) = ID_YES then
+        ShellExecute(0, nil, PChar('http://www.yryz.net?f=OnTimer_Help'), nil, nil, SW_SHOW);
+
       PostQuitMessage(0);               //退出
     end;
   end;
 end;
-
 
 end.
 

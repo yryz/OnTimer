@@ -1,10 +1,10 @@
-program OnTime;
+program OnTimer;
 
 uses
   Windows,
   Forms,
   SysUtils,
-  frmOnTime_u in 'frmOnTime_u.pas' {frmOnTime},
+  frmOnTimer_u in 'frmOnTimer_u.pas' {frmOnTimer},
   frmAddTask_u in 'frmAddTask_u.pas' {frmAddTask},
   frmOption_u in 'frmOption_u.pas' {frmOption},
   frmAbout_u in 'frmAbout_u.pas' {frmAbout},
@@ -16,13 +16,14 @@ uses
 begin
   Application.Initialize;
   Application.Title := '任务计划';
-  if StrIComp(PChar(ParamStr(1)), '/hide') = 0 then
+  if FindCmdLineSwitch('h', ['/', '-'], True) then
     Application.ShowMainForm := False
-  else if StrIComp(PChar(ParamStr(1)), '/hidefull') = 0 then begin
+  else if FindCmdLineSwitch('h-all', ['/', '-'], True) then
+  begin
     IsHideTray := True;
     Application.ShowMainForm := False;
   end;
-  Application.CreateForm(TfrmOnTime, frmOnTime);
+  Application.CreateForm(TfrmOnTimer, frmOnTimer);
   Application.Run;
 end.
 

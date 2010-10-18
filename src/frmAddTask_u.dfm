@@ -4,7 +4,7 @@ object frmAddTask: TfrmAddTask
   BorderIcons = [biSystemMenu]
   BorderStyle = bsNone
   Caption = #28155#21152#20219#21153
-  ClientHeight = 190
+  ClientHeight = 195
   ClientWidth = 374
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -93,7 +93,7 @@ object frmAddTask: TfrmAddTask
       Font.Style = []
       ParentFont = False
     end
-    object lbl2: TLabel
+    object lblParam: TLabel
       Left = 5
       Top = 119
       Width = 38
@@ -113,6 +113,7 @@ object frmAddTask: TfrmAddTask
       Top = 21
       Width = 82
       Height = 21
+      Style = csDropDownList
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       ItemHeight = 13
       TabOrder = 0
@@ -123,9 +124,12 @@ object frmAddTask: TfrmAddTask
       Top = 20
       Width = 65
       Height = 22
+      Hint = #31243#24207#36816#34892#26399#38388#65292#26368#22823#25191#34892#27425#25968
       MaxLength = 9
       MaxValue = 999999999
       MinValue = 1
+      ParentShowHint = False
+      ShowHint = True
       TabOrder = 1
       Value = 1
     end
@@ -203,8 +207,11 @@ object frmAddTask: TfrmAddTask
       Top = 23
       Width = 52
       Height = 17
+      Hint = #28155#21152#21518#21363#29983#25928
       Caption = #28608#27963
       Checked = True
+      ParentShowHint = False
+      ShowHint = True
       State = cbChecked
       TabOrder = 2
     end

@@ -1,11 +1,11 @@
 object frmOption: TfrmOption
-  Left = 359
-  Top = 292
+  Left = 303
+  Top = 270
   BorderIcons = [biSystemMenu]
   BorderStyle = bsNone
   Caption = #35774#32622
-  ClientHeight = 148
-  ClientWidth = 267
+  ClientHeight = 210
+  ClientWidth = 266
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -24,8 +24,8 @@ object frmOption: TfrmOption
     Left = 8
     Top = 8
     Width = 249
-    Height = 129
-    Caption = #35774#32622'(SMTP'#12289#28909#38190')'
+    Height = 105
+    Caption = 'SMTP'#35774#32622
     TabOrder = 0
     OnMouseDown = FormMouseDown
     object InfoLabel2: TLabel
@@ -36,12 +36,6 @@ object frmOption: TfrmOption
       Alignment = taRightJustify
       AutoSize = False
       Caption = 'SMTP'#20027#26426':'
-      Font.Charset = DEFAULT_CHARSET
-      Font.Color = 13977088
-      Font.Height = -11
-      Font.Name = 'MS Sans Serif'
-      Font.Style = []
-      ParentFont = False
     end
     object InfoLabel3: TLabel
       Left = 6
@@ -51,12 +45,6 @@ object frmOption: TfrmOption
       Alignment = taRightJustify
       AutoSize = False
       Caption = 'SMTP'#36134#25143':'
-      Font.Charset = DEFAULT_CHARSET
-      Font.Color = 13977088
-      Font.Height = -11
-      Font.Name = 'MS Sans Serif'
-      Font.Style = []
-      ParentFont = False
     end
     object InfoLabel4: TLabel
       Left = 6
@@ -66,27 +54,6 @@ object frmOption: TfrmOption
       Alignment = taRightJustify
       AutoSize = False
       Caption = 'SMTP'#23494#30721':'
-      Font.Charset = DEFAULT_CHARSET
-      Font.Color = 13977088
-      Font.Height = -11
-      Font.Name = 'MS Sans Serif'
-      Font.Style = []
-      ParentFont = False
-    end
-    object lbl1: TLabel
-      Left = 6
-      Top = 100
-      Width = 67
-      Height = 13
-      Alignment = taRightJustify
-      AutoSize = False
-      Caption = #31243#24207#28909#38190':'
-      Font.Charset = DEFAULT_CHARSET
-      Font.Color = 13977088
-      Font.Height = -11
-      Font.Name = 'MS Sans Serif'
-      Font.Style = []
-      ParentFont = False
     end
     object edtServer: TEdit
       Left = 75
@@ -102,7 +69,7 @@ object frmOption: TfrmOption
     object edtUser: TEdit
       Left = 75
       Top = 46
-      Width = 120
+      Width = 166
       Height = 21
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       TabOrder = 2
@@ -110,7 +77,7 @@ object frmOption: TfrmOption
     object edtPass: TEdit
       Left = 75
       Top = 70
-      Width = 120
+      Width = 166
       Height = 21
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       PasswordChar = '*'
@@ -130,34 +97,60 @@ object frmOption: TfrmOption
       TabOrder = 1
       Value = 25
     end
-    object btnOk: TButton
-      Left = 200
-      Top = 51
-      Width = 43
-      Height = 28
-      Caption = #30830#23450
-      ModalResult = 1
-      TabOrder = 4
-      OnClick = btnOkClick
-    end
-    object btnCancel: TButton
-      Left = 200
-      Top = 88
-      Width = 43
-      Height = 28
-      Cancel = True
-      Caption = #21462#28040
-      ModalResult = 2
-      TabOrder = 5
+  end
+  object grp1: TGroupBox
+    Left = 8
+    Top = 120
+    Width = 249
+    Height = 78
+    Caption = #36719#20214#35774#32622
+    TabOrder = 1
+    object lbl1: TLabel
+      Left = 6
+      Top = 20
+      Width = 67
+      Height = 13
+      Alignment = taRightJustify
+      AutoSize = False
+      Caption = #31243#24207#28909#38190':'
     end
     object hk1: THotKey
-      Left = 75
-      Top = 97
+      Left = 73
+      Top = 17
       Width = 120
       Height = 19
       HotKey = 16496
       Modifiers = [hkCtrl]
-      TabOrder = 6
+      TabOrder = 0
+    end
+    object chkAutoRun: TCheckBox
+      Left = 72
+      Top = 48
+      Width = 97
+      Height = 17
+      Caption = #38543#31995#32479#21551#21160
+      TabOrder = 1
+      OnClick = chkAutoRunClick
+    end
+    object btnOk: TButton
+      Left = 200
+      Top = 15
+      Width = 43
+      Height = 24
+      Caption = #30830#23450
+      ModalResult = 1
+      TabOrder = 2
+      OnClick = btnOkClick
+    end
+    object btnCancel: TButton
+      Left = 200
+      Top = 45
+      Width = 43
+      Height = 24
+      Cancel = True
+      Caption = #21462#28040
+      ModalResult = 2
+      TabOrder = 3
     end
   end
 end

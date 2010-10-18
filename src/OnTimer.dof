@@ -114,7 +114,7 @@ IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
 MinorVer=2
-Release=6
+Release=7
 Build=0
 Debug=0
 PreRelease=0
@@ -126,14 +126,16 @@ CodePage=936
 [Version Info Keys]
 CompanyName=HouSoft
 FileDescription=任务计划
-FileVersion=1.2.6.0
+FileVersion=1.2.7.0
 InternalName=
-LegalCopyright=厚建勇
+LegalCopyright=HouSoft
 LegalTrademarks=
-OriginalFilename=OnTime.exe
+OriginalFilename=OnTimer.exe
 ProductName=
 ProductVersion=1.2.0.0
 Comments=
+[Excluded Packages]
+d:\program files\borland\delphi7\Bin\dclindy70.bpl=Internet Direct (Indy) for D7 Property and Component Editors
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;

@@ -32,9 +32,10 @@ object frmAbout: TfrmAbout
   object lblVer: TLabel
     Left = 10
     Top = 122
-    Width = 34
+    Width = 37
     Height = 13
-    Caption = 'Ver1.2f'
+    Caption = 'Ver1.2g'
+    Enabled = False
   end
   object pnl1: TPanel
     Left = 8
@@ -48,16 +49,17 @@ object frmAbout: TfrmAbout
     TabOrder = 0
     object InfoLabelL3: TLabel
       Left = 150
-      Top = 69
+      Top = 61
       Width = 39
       Height = 13
       Alignment = taRightJustify
       AutoSize = False
       Caption = #20027#39029':'
+      Enabled = False
     end
     object InfoLabelUrl: TLabel
       Left = 195
-      Top = 69
+      Top = 61
       Width = 84
       Height = 13
       Cursor = crHandPoint
@@ -70,42 +72,19 @@ object frmAbout: TfrmAbout
       ParentFont = False
       OnClick = InfoLabelUrlClick
     end
-    object InfoLabelQQ: TLabel
-      Left = 195
-      Top = 47
-      Width = 48
-      Height = 13
-      Cursor = crHelp
-      Caption = '83803049'
-      Font.Charset = DEFAULT_CHARSET
-      Font.Color = clBlue
-      Font.Height = -11
-      Font.Name = 'MS Sans Serif'
-      Font.Style = [fsUnderline]
-      ParentFont = False
-      OnClick = InfoLabelQQClick
-    end
-    object InfoLabelL2: TLabel
-      Left = 150
-      Top = 48
-      Width = 39
-      Height = 13
-      Alignment = taRightJustify
-      AutoSize = False
-      Caption = 'Q  Q :'
-    end
     object InfoLabelL1: TLabel
       Left = 150
-      Top = 26
+      Top = 42
       Width = 39
       Height = 13
       Alignment = taRightJustify
       AutoSize = False
       Caption = #20316#32773':'
+      Enabled = False
     end
     object InfoLabelZZ: TLabel
       Left = 195
-      Top = 26
+      Top = 42
       Width = 39
       Height = 13
       Caption = 'HouSoft'

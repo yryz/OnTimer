@@ -1,4 +1,4 @@
-object frmOnTime: TfrmOnTime
+object frmOnTimer: TfrmOnTimer
   Left = 278
   Top = 207
   Width = 605
@@ -22,7 +22,7 @@ object frmOnTime: TfrmOnTime
     Left = 0
     Top = 0
     Width = 597
-    Height = 308
+    Height = 301
     Align = alClient
     BorderStyle = bsNone
     Checkboxes = True
@@ -41,21 +41,22 @@ object frmOnTime: TfrmOnTime
         Width = 218
       end
       item
-        Caption = #21442#25968
+        Caption = #21442#25968' / '#22791#27880
         Width = 88
       end
       item
         Alignment = taCenter
         Caption = #21097#20313
       end>
-    ColumnClick = False
     GridLines = True
     MultiSelect = True
     RowSelect = True
     SmallImages = ImageList1
     TabOrder = 0
     ViewStyle = vsReport
-    IgnoreCheck = False
+    OnColumnClick = lvTaskColumnClick
+    OnCompare = lvTaskCompare
+    IgnoreCheck = True
     OnChecking = lvTaskChecking
   end
   object tmrOntimer: TTimer

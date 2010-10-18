@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Forms,
-  StdCtrls, Controls, Spin, ComCtrls;
+  StdCtrls, Controls, Spin, ComCtrls, FuncLib;
 
 type
   TfrmOption = class(TForm)
@@ -16,21 +16,28 @@ type
     edtUser: TEdit;
     edtPass: TEdit;
     sePort: TSpinEdit;
+    grp1: TGroupBox;
+    lbl1: TLabel;
+    hk1: THotKey;
+    chkAutoRun: TCheckBox;
     btnOk: TButton;
     btnCancel: TButton;
-    hk1: THotKey;
-    lbl1: TLabel;
     procedure btnOkClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormPaint(Sender: TObject);
     procedure FormMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure edtPassKeyPress(Sender: TObject; var Key: Char);
+    procedure chkAutoRunClick(Sender: TObject);
   private
     isPassChanged: Boolean;
   public
     { Public declarations }
   end;
+
+const
+  AUTO_RUN_HKEY     = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Run';
+  AUTO_RUN_KEY      = 'OnTimer';
 
 var
   frmOption         : TfrmOption;
@@ -58,7 +65,10 @@ begin
   edtUser.Text := g_Option.SmtpUser;
   hk1.HotKey := g_Option.ShortCut;
   isPassChanged := False;
-  if g_Option.SmtpPass <> '' then edtPass.Text := '******';
+  if g_Option.SmtpPass <> '' then
+    edtPass.Text := '******';
+
+  chkAutoRun.Checked := Pos(ParamStr(0), RegReadStr(AUTO_RUN_HKEY, AUTO_RUN_KEY)) > 0;
 end;
 
 procedure TfrmOption.FormPaint(Sender: TObject);
@@ -76,9 +86,22 @@ end;
 
 procedure TfrmOption.edtPassKeyPress(Sender: TObject; var Key: Char);
 begin
-  if not isPassChanged then begin
+  if not isPassChanged then
+  begin
     edtPass.Clear;
     isPassChanged := True;
+  end;
+end;
+
+procedure TfrmOption.chkAutoRunClick(Sender: TObject);
+begin
+  if Showing then
+  begin
+    if TCheckBox(Sender).Checked then
+      TCheckBox(Sender).Checked := RegWriteStr(AUTO_RUN_HKEY, AUTO_RUN_KEY,
+        PAnsiChar('"' + ParamStr(0) + '" /h'))
+    else
+      RegDelValue(AUTO_RUN_HKEY, AUTO_RUN_KEY);
   end;
 end;
 
