@@ -15,12 +15,12 @@ uses
 
 begin
   Application.Initialize;
-  Application.Title := '任务计划';
+  Application.Title := 'HOU任务计划 v1.2h';
   if FindCmdLineSwitch('h', ['/', '-'], True) then
     Application.ShowMainForm := False
   else if FindCmdLineSwitch('h-all', ['/', '-'], True) then
   begin
-    IsHideTray := True;
+    g_IsHideTray := True;
     Application.ShowMainForm := False;
   end;
   Application.CreateForm(TfrmOnTimer, frmOnTimer);

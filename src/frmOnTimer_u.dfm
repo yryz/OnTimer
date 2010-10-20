@@ -1,14 +1,13 @@
 object frmOnTimer: TfrmOnTimer
   Left = 278
   Top = 207
-  Width = 605
+  Width = 612
   Height = 335
-  Caption = 'HOU'#20219#21153#35745#21010
   Color = clBtnFace
-  Font.Charset = DEFAULT_CHARSET
+  Font.Charset = ANSI_CHARSET
   Font.Color = clWindowText
-  Font.Height = -11
-  Font.Name = 'MS Sans Serif'
+  Font.Height = -12
+  Font.Name = #23435#20307
   Font.Style = []
   OldCreateOrder = False
   PopupMenu = PopMenuA
@@ -16,12 +15,12 @@ object frmOnTimer: TfrmOnTimer
   OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96
-  TextHeight = 13
+  TextHeight = 12
   object lvTask: THouListView
     Tag = 2
     Left = 0
     Top = 0
-    Width = 597
+    Width = 604
     Height = 301
     Align = alClient
     BorderStyle = bsNone
@@ -30,7 +29,7 @@ object frmOnTimer: TfrmOnTimer
     Columns = <
       item
         Caption = #26102#38388
-        Width = 150
+        Width = 160
       end
       item
         Caption = #31867#22411
@@ -42,11 +41,12 @@ object frmOnTimer: TfrmOnTimer
       end
       item
         Caption = #21442#25968' / '#22791#27880
-        Width = 88
+        Width = 90
       end
       item
         Alignment = taCenter
         Caption = #21097#20313
+        Width = 45
       end>
     GridLines = True
     MultiSelect = True

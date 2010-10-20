@@ -19,6 +19,7 @@ type
     procedure InfoLabelUrlClick(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
+    procedure FormCreate(Sender: TObject);
   private
   public
   end;
@@ -40,6 +41,11 @@ procedure TfrmAbout.FormKeyDown(Sender: TObject; var Key: Word;
 begin
   if Key = VK_ESCAPE then
     Close;
+end;
+
+procedure TfrmAbout.FormCreate(Sender: TObject);
+begin
+  lblVer.Caption := Application.Title;
 end;
 
 end.

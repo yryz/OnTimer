@@ -258,7 +258,7 @@ begin
   self.fInTrans := False;
   Msg := nil;
   try
-    utf8FileName := UTF8String(FileName);
+    utf8FileName := UTF8Encode(FileName);
     iResult := SQLite3_Open(PAnsiChar(utf8FileName), Fdb);
     if iResult <> SQLITE_OK then
       if Assigned(Fdb) then

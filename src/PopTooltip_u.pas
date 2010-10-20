@@ -34,6 +34,8 @@ type
   public
     constructor Create(sMsg, ImgPath: string; dWaitTime: DWORD);
     destructor Destroy; override;
+    procedure Close;
+
     class function ShowMsg(sMsg, bgImgPath: string; dWaitTime: DWORD): Boolean;
   end;
 
@@ -181,11 +183,10 @@ begin
       WM_LBUTTONDOWN:
         begin
           //OutputDebugString(PChar(IntToStr(LParamLo)+'|'+IntToStr(LParamHi)));
-          if (LParamLo >= FWidth - 10)
-            and (LParamHi < 10) then
+          if (LParamLo >= FWidth - 20)
+            and (LParamHi < 20) then
           begin                         { 点击关闭图标 }
-            FIsQuitAnimate := True;
-            SetTimer(FHandle, TIMER_ANIMATE, 10, nil);
+            Self.Close;
           end
           else
           begin                         { 拖动 }
@@ -193,6 +194,12 @@ begin
             PostMessage(FHandle, WM_SYSCOMMAND, $F012, 0);
           end;
         end;
+      WM_KEYDOWN:
+        begin
+          if WParam = VK_ESCAPE then
+            Self.Close;
+        end;
+
       WM_DESTROY:
         begin
           SetWindowLong(FHandle, GWL_WNDPROC, LongInt(@DefWindowProc)); //一定要
@@ -263,6 +270,12 @@ end;
 function TPopTooltip.Show: Boolean;
 begin
   Result := ShowWindow(FHandle, SW_SHOW);
+end;
+
+procedure TPopTooltip.Close;
+begin
+  FIsQuitAnimate := True;
+  SetTimer(FHandle, TIMER_ANIMATE, 10, nil);
 end;
 
 class function TPopTooltip.ShowMsg;

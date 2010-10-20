@@ -94,7 +94,7 @@ OutputDir=..\Bin
 UnitOutputDir=z:\
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=..\Include;..\Include\GDIPlus
+SearchPath=$(DELPHI)\Lib\Debug;..\Include;..\Include\GDIPlus
 Packages=vcl;rtl;dbrtl;inet;inetdb;dsnap;bdertl;vclx;vcldb;vcldbx;visualclx;visualdbclx;vclactnband;vclshlctrls;vclie;xmlrtl;inetdbbde;inetdbxpress;webdsnap;soaprtl;websnap;adortl;dbexpress;dsnapcon;dbxcds;ibxpress;teeui;teedb;tee;dss;VclSmp;dclOfficeXP;qrpt;teeqr;Rave50CLX;Rave50VCL;IntrawebDB_50_70;Intraweb_50_70;VclNewlyext;indy
 Conditionals=
 DebugSourceDirs=
@@ -114,7 +114,7 @@ IncludeVerInfo=1
 AutoIncBuild=0
 MajorVer=1
 MinorVer=2
-Release=7
+Release=8
 Build=0
 Debug=0
 PreRelease=0
@@ -126,7 +126,7 @@ CodePage=936
 [Version Info Keys]
 CompanyName=HouSoft
 FileDescription=任务计划
-FileVersion=1.2.7.0
+FileVersion=1.2.8.0
 InternalName=
 LegalCopyright=HouSoft
 LegalTrademarks=
@@ -141,8 +141,8 @@ Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlSearchPath]
 Count=3
-Item0=..\Include;..\Include\GDIPlus
-Item1=$(DELPHI)\Lib\Debug;..\Include;..\Include\GDIPlus
+Item0=$(DELPHI)\Lib\Debug;..\Include;..\Include\GDIPlus
+Item1=..\Include;..\Include\GDIPlus
 Item2=..\Include;..\Include\GIDPlus
 [HistoryLists\hlUnitOutputDirectory]
 Count=1

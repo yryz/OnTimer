@@ -7,34 +7,36 @@ object frmAbout: TfrmAbout
   ClientHeight = 142
   ClientWidth = 304
   Color = clBtnFace
-  Font.Charset = DEFAULT_CHARSET
+  Font.Charset = ANSI_CHARSET
   Font.Color = clWindowText
-  Font.Height = -11
-  Font.Name = 'MS Sans Serif'
+  Font.Height = -12
+  Font.Name = #23435#20307
   Font.Style = []
   FormStyle = fsStayOnTop
   KeyPreview = True
   OldCreateOrder = False
   Position = poMainFormCenter
+  OnCreate = FormCreate
   OnKeyDown = FormKeyDown
   PixelsPerInch = 96
-  TextHeight = 13
+  TextHeight = 12
   object lbl1: TLabel
-    Left = 220
+    Left = 184
     Top = 122
-    Width = 66
-    Height = 13
+    Width = 102
+    Height = 12
     Alignment = taRightJustify
-    Caption = '2008 HouSoft'
+    Caption = '2008-2010 HouSoft'
     Enabled = False
     Transparent = True
   end
   object lblVer: TLabel
     Left = 10
     Top = 122
-    Width = 37
-    Height = 13
-    Caption = 'Ver1.2g'
+    Width = 167
+    Height = 12
+    AutoSize = False
+    Caption = 'Ver'
     Enabled = False
   end
   object pnl1: TPanel
@@ -48,9 +50,9 @@ object frmAbout: TfrmAbout
     ParentBackground = False
     TabOrder = 0
     object InfoLabelL3: TLabel
-      Left = 150
+      Left = 152
       Top = 61
-      Width = 39
+      Width = 37
       Height = 13
       Alignment = taRightJustify
       AutoSize = False
@@ -59,7 +61,7 @@ object frmAbout: TfrmAbout
     end
     object InfoLabelUrl: TLabel
       Left = 195
-      Top = 61
+      Top = 60
       Width = 84
       Height = 13
       Cursor = crHandPoint
@@ -73,9 +75,9 @@ object frmAbout: TfrmAbout
       OnClick = InfoLabelUrlClick
     end
     object InfoLabelL1: TLabel
-      Left = 150
+      Left = 152
       Top = 42
-      Width = 39
+      Width = 37
       Height = 13
       Alignment = taRightJustify
       AutoSize = False
@@ -85,8 +87,8 @@ object frmAbout: TfrmAbout
     object InfoLabelZZ: TLabel
       Left = 195
       Top = 42
-      Width = 39
-      Height = 13
+      Width = 42
+      Height = 12
       Caption = 'HouSoft'
     end
     object img1: TImage

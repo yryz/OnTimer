@@ -1,16 +1,16 @@
 object frmOption: TfrmOption
-  Left = 303
-  Top = 270
+  Left = 317
+  Top = 183
   BorderIcons = [biSystemMenu]
   BorderStyle = bsNone
   Caption = #35774#32622
   ClientHeight = 210
   ClientWidth = 266
   Color = clBtnFace
-  Font.Charset = DEFAULT_CHARSET
+  Font.Charset = ANSI_CHARSET
   Font.Color = clWindowText
-  Font.Height = -11
-  Font.Name = 'MS Sans Serif'
+  Font.Height = -12
+  Font.Name = #23435#20307
   Font.Style = []
   OldCreateOrder = False
   Position = poMainFormCenter
@@ -19,7 +19,7 @@ object frmOption: TfrmOption
   OnPaint = FormPaint
   OnShow = FormPaint
   PixelsPerInch = 96
-  TextHeight = 13
+  TextHeight = 12
   object grpSBox: TGroupBox
     Left = 8
     Top = 8
@@ -59,7 +59,7 @@ object frmOption: TfrmOption
       Left = 75
       Top = 22
       Width = 120
-      Height = 21
+      Height = 20
       Hint = #22914'smtp.126.com'
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       ParentShowHint = False
@@ -69,33 +69,33 @@ object frmOption: TfrmOption
     object edtUser: TEdit
       Left = 75
       Top = 46
-      Width = 166
-      Height = 21
+      Width = 162
+      Height = 20
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
-      TabOrder = 2
+      TabOrder = 1
     end
     object edtPass: TEdit
       Left = 75
       Top = 70
-      Width = 166
-      Height = 21
+      Width = 162
+      Height = 20
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       PasswordChar = '*'
-      TabOrder = 3
+      TabOrder = 2
       OnKeyPress = edtPassKeyPress
     end
-    object sePort: TSpinEdit
-      Left = 201
+    object edtPort: TEdit
+      Left = 200
       Top = 22
-      Width = 43
-      Height = 22
+      Width = 37
+      Height = 20
       Hint = 'SMTP'#31471#21475','#19968#33324#20026'25'
-      MaxValue = 65535
-      MinValue = 25
+      ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
+      MaxLength = 5
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 1
-      Value = 25
+      TabOrder = 3
+      Text = '25'
     end
   end
   object grp1: TGroupBox
@@ -115,9 +115,9 @@ object frmOption: TfrmOption
       Caption = #31243#24207#28909#38190':'
     end
     object hk1: THotKey
-      Left = 73
+      Left = 75
       Top = 17
-      Width = 120
+      Width = 116
       Height = 19
       HotKey = 16496
       Modifiers = [hkCtrl]
@@ -133,7 +133,7 @@ object frmOption: TfrmOption
       OnClick = chkAutoRunClick
     end
     object btnOk: TButton
-      Left = 200
+      Left = 198
       Top = 15
       Width = 43
       Height = 24
@@ -143,7 +143,7 @@ object frmOption: TfrmOption
       OnClick = btnOkClick
     end
     object btnCancel: TButton
-      Left = 200
+      Left = 198
       Top = 45
       Width = 43
       Height = 24

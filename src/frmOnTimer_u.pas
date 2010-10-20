@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Graphics, Classes, Forms,
   ExtCtrls, Controls, ComCtrls, ImgList, Menus, XPMan, ShellAPI,
-  TaskMgr_u, HouListView;
+  TaskMgr_u, HouListView, CommCtrl;
 
 const
   WM_ICON           = WM_USER + 10;
@@ -49,16 +49,19 @@ type
     procedure SysEvent(var Message: Tmessage); message WM_SYSCOMMAND;
     procedure TrayEvent(var Message: Tmessage); message WM_ICON;
     procedure WMHotKey(var Msg: Tmessage); message WM_HOTKEY;
+    procedure WndProc(var Msg: Tmessage); override;
   private
     FHkKey: Word;
     FHkShift: Word;
+    procedure SetTryico;
     procedure SetHotKey(ShortCut: TShortCut);
   end;
 
 var
   frmOnTimer        : TfrmOnTimer;
-  IsHideTray        : Boolean;
-  AppTray           : TNotifyIconData;
+  g_IsHideTray      : Boolean;
+  g_AppTray         : TNotifyIconData;
+  g_TaskBarMSG      : Dword;            //任务栏恢复消息
 
 implementation
 
@@ -66,20 +69,21 @@ uses
   frmAbout_u, frmAddTask_u, frmOption_u;
 {$R *.dfm}
 
-procedure SetTryico;
+procedure TfrmOnTimer.SetTryico;
 begin
-  if IsHideTray then
-    Exit;
-  with AppTray do
+  if not g_IsHideTray then
   begin
-    cbSize := SizeOf(AppTray);
-    Wnd := frmOnTimer.Handle;
-    uID := 0;
-    uFlags := NIF_ICON or NIF_TIP or NIF_MESSAGE;
-    uCallbackMessage := WM_ICON;
-    HIcon := Application.Icon.Handle;
+    with g_AppTray do
+    begin
+      cbSize := SizeOf(g_AppTray);
+      Wnd := Handle;
+      uID := 0;
+      uFlags := NIF_ICON or NIF_TIP or NIF_MESSAGE;
+      uCallbackMessage := WM_ICON;
+      HIcon := Application.Icon.Handle;
+    end;
+    Shell_NotifyIcon(NIM_ADD, @g_AppTray);
   end;
-  Shell_NotifyIcon(NIM_ADD, @AppTray);
 end;
 
 procedure TfrmOnTimer.SysEvent(var Message: Tmessage);
@@ -91,7 +95,7 @@ begin
   end
   else
   begin
-    inherited;    
+    inherited;
     if Message.wParam = SC_MINIMIZE then
       Hide;
   end;
@@ -114,7 +118,15 @@ begin
       begin
         SetForegroundWindow(Handle);
         PopMenuA.Popup(Point.x, Point.y);
-      end
+      end;
+
+    WM_MOUSEFIRST:
+      begin
+        with g_TaskMgr do
+          StrPCopy(g_AppTray.szTip, Format(Application.Title
+            + #13#10'任务状态: %d/%d', [ActiveTask, Items.Count]));
+        Shell_NotifyIcon(NIM_MODIFY, @g_AppTray);
+      end;
   else
     inherited;
   end;
@@ -122,12 +134,16 @@ end;
 
 procedure TfrmOnTimer.FormCreate(Sender: TObject);
 begin
-  SetTryico;
+  Caption := Application.Title;
   g_TaskMgr := TTaskMgr.Create(lvTask);
   g_TaskMgr.LoadTask;
-  SetHotKey(g_Option.ShortCut);
+
+  SetTryico;
+
   tmrOntimer.Enabled := True;
   lvTask.DoubleBuffered := True;        //防止闪烁
+
+  SetHotKey(g_Option.ShortCut);
 end;
 
 procedure TfrmOnTimer.tmrOntimerTimer(Sender: TObject);
@@ -174,7 +190,9 @@ end;
 
 procedure TfrmOnTimer.mniDelClick(Sender: TObject);
 begin
-  g_TaskMgr.DeleteSelected;
+  if MessageBox(Handle, '确定要删除所选任务?', '警告',
+    MB_YESNO or MB_ICONWARNING) = ID_YES then
+    g_TaskMgr.DeleteSelected;
 end;
 
 procedure TfrmOnTimer.mniExecClick(Sender: TObject);
@@ -207,7 +225,7 @@ procedure TfrmOnTimer.PopMenuAPopup(Sender: TObject);
 var
   b                 : Boolean;
 begin
-  b := lvTask.SelCount > 0;
+  b := Showing and (lvTask.SelCount > 0);
   mniDel.Visible := b;
   mniEdit.Visible := b;
   mniExec.Visible := b;
@@ -216,7 +234,6 @@ end;
 procedure TfrmOnTimer.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   Hide;
-  Shell_NotifyIcon(NIM_DELETE, @AppTray);
   if Assigned(g_TaskMgr) then
     g_TaskMgr.Free;
   UnregisterHotKey(Handle, 0);
@@ -275,7 +292,41 @@ procedure TfrmOnTimer.lvTaskCompare(Sender: TObject; Item1,
   Item2: TListItem; Data: Integer; var Compare: Integer);
 begin
   ListCompare(Sender, Item1, Item2, Data, Compare);
+
+  //ORDER BY checked,caption
+  with THouListView(Sender) do
+    if (SortedColumn = 0) then
+    begin
+      if Descending then
+      begin
+        if Item1.Checked then
+          Dec(Compare, 10000)
+        else
+          Inc(Compare, 10000);
+      end
+      else
+      begin
+        if Item2.Checked then
+          Dec(Compare, 10000)
+        else
+          Inc(Compare, 10000);
+      end;
+    end;
 end;
 
+procedure TfrmOnTimer.WndProc(var Msg: Tmessage);
+begin
+  inherited;
+  if Msg.Msg = g_TaskBarMSG then        //任务栏恢复消息
+  begin
+    Shell_NotifyIcon(NIM_DELETE, @g_AppTray);
+    SetTryico;
+  end;
+end;
+
+initialization
+  g_TaskBarMSG := RegisterWindowMessage('TaskbarCreated');
+finalization
+  Shell_NotifyIcon(NIM_DELETE, @g_AppTray);
 end.
 

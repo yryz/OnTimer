@@ -56,7 +56,7 @@ type
   TTask = class(TListItem)              //TListView中添加此Item
   private
     FId: Integer;
-    FExecNum: DWORD;                    //可执行次数
+    FExecNum: Integer;                  //可执行次数
     FTaskType: TTaskType;
     FTimeType: TTimeType;               //记时类型
     FLoopTime: DWORD;                   //倒计时计数
@@ -68,7 +68,7 @@ type
     procedure SetContent(const Value: string);
     procedure SetParam(const Value: string);
     procedure SetTaskType(const Value: TTaskType);
-    procedure SetExecNum(const Value: DWORD);
+    procedure SetExecNum(const Value: Integer);
   public
     constructor Create(Items: TListItems);
     destructor Destroy; override;
@@ -77,7 +77,7 @@ type
     procedure SetTime(timeType: TTimeType; Value: TTimeRec);
   published
     property Id: Integer read FId write FId;
-    property ExecNum: DWORD read FExecNum write SetExecNum;
+    property ExecNum: Integer read FExecNum write SetExecNum;
     property TaskType: TTaskType read FTaskType write SetTaskType;
     property timeType: TTimeType read FTimeType;
     property IsWeek: Boolean read FIsWeek;
@@ -91,6 +91,7 @@ type
     FLv: THouListView;
     FItems: TListItems;
     FTaskDB: TSQLiteDatabase;
+    FActiveTask: Integer;
   public
     constructor Create(lvTask: THouListView);
     destructor Destroy; override;
@@ -101,6 +102,9 @@ type
     procedure UpdateOption;
     function DeleteSelected: Integer;
     procedure OnTimer(dateTime: TDateTime);
+  public
+    property Items: TListItems read FItems;
+    property ActiveTask: Integer read FActiveTask;
   end;
 
   TOption = record
@@ -282,7 +286,7 @@ begin
   SubItems.Strings[0] := TASK_TYPE_STR[Value];
 end;
 
-procedure TTask.SetExecNum(const Value: DWORD);
+procedure TTask.SetExecNum(const Value: Integer);
 begin
   FExecNum := Value;
   SubItems.Strings[3] := IntToStr(Value);
@@ -319,6 +323,9 @@ begin
     Result := TTask.Create(FItems);
     FItems.AddItem(Result, 0);
     Result.Checked := bChecked;
+
+    if bChecked then
+      Inc(FActiveTask);
   finally
     FLv.IgnoreCheck := False;
   end;
@@ -348,12 +355,19 @@ procedure TTaskMgr.UpdateCheckState;
 var
   Table             : TSQLiteTable;
 begin
-  try
-    Table := TSQLiteTable.Create(FTaskDB, SQL_UPDATE_TASK2 + IntToStr(Task.Id),
-      [bChecked]);
-  finally
-    Table.Free;
-  end;
+  if Task.Checked <> bChecked then
+    try
+      if Task.ExecNum > 0 then
+        if bChecked then
+          Inc(FActiveTask)
+        else
+          Dec(FActiveTask);
+
+      Table := TSQLiteTable.Create(FTaskDB, SQL_UPDATE_TASK2 + IntToStr(Task.Id),
+        [bChecked]);
+    finally
+      Table.Free;
+    end;
 end;
 
 procedure TTaskMgr.UpdateOption;
@@ -400,7 +414,7 @@ begin
   begin
     Task := FItems[I].Data;
     if not Task.Checked or
-      (Integer(Task.ExecNum) < 1) then
+      (Task.ExecNum < 1) then
       Continue;                         //不可执行
 
     timeStamp := DateTimeToTimeStamp(dateTime);
@@ -436,6 +450,9 @@ begin
     end;
 
     Task.Execute;
+
+    if Task.ExecNum = 0 then
+      Dec(FActiveTask);
   end;
 end;
 
@@ -512,8 +529,7 @@ begin
   except
     on E: Exception do
     begin
-      OutDebug('TTaskMgr.LoadTask Except! Exit!' + E.Message);
-      if MessageBox(0, PChar('读取数据库 ' + sDbPath + ' 异常！'#13#10#13#10
+      if MessageBox(0, PChar('读取数据库 ' + sDbPath + ' 异常(' + E.Message + ')！'#13#10#13#10
         + '可以尝试删除此文件.是否要向作者反馈此信息?'), '提示',
         MB_ICONWARNING or MB_YESNO) = ID_YES then
         ShellExecute(0, nil, PChar('http://www.yryz.net?f=OnTimer_Help'), nil, nil, SW_SHOW);

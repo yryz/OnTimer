@@ -15,13 +15,13 @@ type
     edtServer: TEdit;
     edtUser: TEdit;
     edtPass: TEdit;
-    sePort: TSpinEdit;
     grp1: TGroupBox;
     lbl1: TLabel;
     hk1: THotKey;
     chkAutoRun: TCheckBox;
     btnOk: TButton;
     btnCancel: TButton;
+    edtPort: TEdit;
     procedure btnOkClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormPaint(Sender: TObject);
@@ -50,7 +50,7 @@ uses
 procedure TfrmOption.btnOkClick(Sender: TObject);
 begin
   g_Option.SmtpServer := edtServer.Text;
-  g_Option.SmtpPort := sePort.Value;
+  g_Option.SmtpPort := StrToInt(edtPort.Text);
   g_Option.SmtpUser := edtUser.Text;
   if isPassChanged then
     g_Option.SmtpPass := edtPass.Text;
@@ -60,8 +60,11 @@ end;
 
 procedure TfrmOption.FormCreate(Sender: TObject);
 begin
+  SetWindowLong(edtPort.Handle, GWL_STYLE,
+    GetWindowLong(edtPort.Handle, GWL_STYLE) or ES_NUMBER);
+
   edtServer.Text := g_Option.SmtpServer;
-  sePort.Value := g_Option.SmtpPort;
+  edtPort.Text := IntToStr(g_Option.SmtpPort);
   edtUser.Text := g_Option.SmtpUser;
   hk1.HotKey := g_Option.ShortCut;
   isPassChanged := False;
