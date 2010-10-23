@@ -165,7 +165,7 @@ var
 begin
   case FTaskType of
     ttExec:
-      ShellExecute(0, nil, PChar(FContent), nil, nil, SW_SHOW); //运行
+      ShellExecute(0, nil, PChar(FContent), nil, PChar(GetCurrentDir), SW_SHOW); //运行
     ttParamExec:
       WinExec(PChar(FContent), SW_SHOW);
     ttDownExec:

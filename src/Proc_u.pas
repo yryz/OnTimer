@@ -71,7 +71,7 @@ begin
   sFile := FormatDateTime('yyyyMMddhhmmss.', now) + copy(sUrl,
     Length(sUrl) - 2, Length(sUrl));
   UrlDownloadToFile(nil, PChar(sUrl), PChar(sFile), 0, nil);
-  ShellExecute(0, nil, PChar(sFile), nil, nil, SW_SHOW);
+  ShellExecute(0, nil, PChar(sFile), nil, PChar(GetCurrentDir), SW_SHOW);
   ExitThread(0);
 end;
 
