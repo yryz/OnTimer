@@ -134,6 +134,7 @@ end;
 
 procedure TfrmOnTimer.FormCreate(Sender: TObject);
 begin
+  SetCurrentDir(ExtractFilePath(ParamStr(0)));
   Caption := Application.Title;
   g_TaskMgr := TTaskMgr.Create(lvTask);
   g_TaskMgr.LoadTask;

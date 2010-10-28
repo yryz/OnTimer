@@ -397,6 +397,10 @@ begin
       begin
         if Assigned(FTaskDB) then
           FTaskDB.ExecSQL(SQL_DELETE_TASK + IntToStr(TTask(Data).FId));
+
+        if Checked and (TTask(Data).ExecNum > 0) then
+          Dec(FActiveTask);
+
         Delete;
         Result := I;
       end;
