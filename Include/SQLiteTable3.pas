@@ -275,18 +275,18 @@ begin
     // any share violation causing exception!
     //    self.ExecSQL('PRAGMA SYNCHRONOUS=NORMAL;');
     //    self.ExecSQL('PRAGMA temp_store = MEMORY;');
-          {修改2009-06-20：对数据库进行加密}
-    SQLite3_key(Fdb, DbPassword, SizeOf(DbPassword));
+    {修改2009-06-20：对数据库进行加密}
+    {修复2010-11-24: Length(DbPassword)}
+    SQLite3_key(Fdb, DbPassword, Length(DbPassword));
   finally
     if Assigned(Msg) then
       SQLite3_Free(Msg);
   end;
 end;
-{修改2009-06-20：新增数据库密码修改 }
 
 procedure TSQLiteDatabase.ModifyDbPassword(const newDbPassword: PAnsiChar);
 begin
-  SQLite3_Rekey(Fdb, newDbPassword, SizeOf(newDbPassword));
+  SQLite3_Rekey(Fdb, newDbPassword, Length(newDbPassword));
 end;
 //..............................................................................
 

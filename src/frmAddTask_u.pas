@@ -19,7 +19,6 @@ type
     chkEveryDay: TCheckBox;
     chkLoop: TCheckBox;
     InfoLabel1: TLabel;
-    edtContent: TEdit;
     lbl1: TLabel;
     lblParam: TLabel;
     edtParam: TEdit;
@@ -32,6 +31,11 @@ type
     chkFri: TCheckBox;
     chkSat: TCheckBox;
     chkSun: TCheckBox;
+    chkTmpExecNum: TCheckBox;
+    chkMonthly: TCheckBox;
+    lbl2: TLabel;
+    cbbClass: TComboBox;
+    mmoContent: TMemo;
     procedure btnOkClick(Sender: TObject);
     procedure chkEveryDayClick(Sender: TObject);
     procedure cbbTypeChange(Sender: TObject);
@@ -39,21 +43,14 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure FormPaint(Sender: TObject);
     procedure chkWeekClick(Sender: TObject);
+    procedure mmoContentEnter(Sender: TObject);
   private
     FTask: TTask;
     FToolTip: TToolTip;
+    FContentTip: string;
   public
     constructor Create(Task: TTask);
   end;
-
-const
-  DATETIME_FORMAT_SETTINGS: TFormatSettings = (
-    DateSeparator: '-';
-    TimeSeparator: ':';
-    ShortDateFormat: 'yyyy-MM-dd';
-    LongDateFormat: 'yyyy-MM-dd hh:mm:ss';
-    ShortTimeFormat: 'hh:mm';
-    LongTimeFormat: 'hh:mm:ss');
 
 var
   frmAddTask        : TfrmAddTask;
@@ -65,38 +62,53 @@ uses
 
 constructor TfrmAddTask.Create(Task: TTask);
 var
-  i                 : TTaskType;
+  i                 : Integer;
   weekSet           : TWeekSet;
+
+  SelNode           : TTreeNode;
 begin
   inherited Create(Application);
   FTask := Task;
 
-  cbbType.Clear;
-  for i := TTaskType(0) to High(TTaskType) do
-    cbbType.Items.Add(TASK_TYPE_STR[i]);
-  cbbType.ItemIndex := 0;
-
   FToolTip := TToolTip.Create(Self);
   FToolTip.Interval := 3000;
-  { 任务数据 }
-  if Assigned(Task) then
-  begin
-    chkActive.Checked := Task.Checked;
-    cbbType.ItemIndex := Integer(Task.TaskType);
-    seExecNum.Value := Task.ExecNum;
 
+  SelNode := g_TaskMgr.Classes.Tv.Selected;
+
+  //类型
+  cbbType.Clear;
+  for i := 0 to Integer(High(TTaskType)) do
+    cbbType.Items.Add(TASK_TYPE_STR[TTaskType(i)]);
+  cbbType.ItemIndex := 0;
+
+  //分类
+  cbbClass.Clear;
+  cbbClass.AddItem('未分类', TObject(0));
+  with g_TaskMgr.Classes.ClassNode[tcByClass] do
+    for i := 0 to Count - 1 do
+      cbbClass.AddItem(Item[i].Text, Item[i].Data);
+  cbbClass.ItemIndex := 0;
+
+  { 任务数据 }
+  if Assigned(Task) then                //Edit
+  begin
+    chkActive.Checked := Task.Active;
+    cbbType.ItemIndex := Integer(Task.TaskType);
+    cbbClass.ItemIndex := cbbClass.Items.IndexOfObject(TObject(Task.CId));
+    seExecNum.Value := Task.ExecNum;
+    chkTmpExecNum.Checked := Task.TmpExecNum;
+
+    seExecNum.Enabled := True;
     case Task.TimeType of
-      ttLoop, ttTime:
+      tmLoop, tmTime:
         begin
-          if Task.TimeType = ttLoop then
+          if Task.TimeType = tmLoop then
           begin
-            seExecNum.Enabled := True;
             chkLoop.Checked := True;
             edtTime.Text := IntToStr(Task.TimeRec.TimeOrLoop);
           end
           else
           begin
-            seExecNum.Enabled := True;
             chkEveryDay.Checked := True;
             edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongTimeFormat,
               TimeStampToDateTime(PTimeStamp(@Task.TimeRec)^));
@@ -116,21 +128,35 @@ begin
           end;
         end;
 
-      ttDateTime:
+      tmDateTime:
         begin
           seExecNum.Enabled := False;
           edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat,
             TimeStampToDateTime(PTimeStamp(@Task.TimeRec)^));
         end;
+
+      tmMonthly:
+        begin
+          chkMonthly.Checked := True;
+          edtTime.Text := IntToStr(Task.TimeRec.DateOrWeek) + ' '
+            + FormatDateTime(DATETIME_FORMAT_SETTINGS.LongTimeFormat,
+            TimeStampToDateTime(PTimeStamp(@Task.TimeRec)^));
+        end;
     end;
 
     edtParam.Text := Task.Param;
-    edtContent.Text := Task.Content;
+    mmoContent.Text := Task.Content;
   end
-  else
+  else                                  //Add
   begin
     seExecNum.Enabled := False;
     edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat, now);
+
+    if (SelNode <> nil) then
+      if (SelNode.Parent = g_TaskMgr.Classes.ClassNode[tcByType]) then //按类型
+        cbbType.ItemIndex := Integer(SelNode.Data)
+      else if (SelNode.Parent = g_TaskMgr.Classes.ClassNode[tcByClass]) then //按分类
+        cbbClass.ItemIndex := cbbClass.Items.IndexOfObject(SelNode.Data);
   end;
 
   cbbTypeChange(cbbType);
@@ -138,15 +164,19 @@ end;
 
 procedure TfrmAddTask.btnOkClick(Sender: TObject);
 var
+  S                 : string;
+  n                 : Integer;
   bErr, isAdd       : Boolean;
   timeType          : TTimeType;
   dateTime          : TDateTime;
   timeRec           : TTimeRec;
   weekSet           : TWeekSet;
+
+  Item              : TListItem;
 begin
   bErr := False;
 
-  timeType := ttDateTime;
+  timeType := tmDateTime;
   if chkLoop.Checked then
   begin                                 { 倒计时 }
     if not TryStrToInt(edtTime.Text, Integer(timeRec.TimeOrLoop)) then
@@ -156,25 +186,41 @@ begin
     //        '提示', '计时不能大于' + IntToStr(MAX_LOOP_VALUE) + '秒!');
     //      Exit;
     //    end;
-    timeType := ttLoop;
+    timeType := tmLoop;
   end
   else if TryStrToDateTime(edtTime.Text, dateTime, DATETIME_FORMAT_SETTINGS) then
   begin                                 { 时间、日期 }
     if chkEveryDay.Checked then
     begin
-      timeType := ttTime;
+      timeType := tmTime;
       timeRec.TimeOrLoop := DateTimeToTimeStamp(dateTime).Time;
     end
     else
     begin
-      timeType := ttDateTime;
+      timeType := tmDateTime;
       PTimeStamp(@timeRec)^ := DateTimeToTimeStamp(dateTime);
+    end;
+  end
+  else if chkMonthly.Checked then
+  begin                                 { 每月 24 22:29:00}
+    S := edtTime.Text;
+    bErr := not (
+      (S[1] in ['0'..'3']) and (S[2] in ['0'..'9']) and (S[3] = ' ')
+      and not TryStrToInt(S, n) and (n > 0) and (n <= 31)
+      and TryStrToDateTime(Copy(S, 4, 8), dateTime, DATETIME_FORMAT_SETTINGS)
+      );
+
+    if not bErr then
+    begin
+      timeType := tmMonthly;
+      timeRec.DateOrWeek := n;
+      timeRec.TimeOrLoop := DateTimeToTimeStamp(dateTime).Time;
     end;
   end
   else
     bErr := True;
 
-  if timeType <> ttDateTime then
+  if not (timeType in [tmDateTime, tmMonthly]) then
   begin
     weekSet := [wdNone];
     if chkWeek.Checked then
@@ -206,15 +252,26 @@ begin
 
   isAdd := not Assigned(FTask);
   if isAdd then
-    FTask := g_TaskMgr.Make(chkActive.Checked)
+  begin
+    FTask := g_TaskMgr.NewTask(True);
+    Item := g_TaskMgr.Lv.Items.Insert(0);
+    g_TaskMgr.UpdateTaskCount;
+  end
   else
-    FTask.Checked := chkActive.Checked;
+    Item := FTask.ItemUI;
+
+  FTask.Active := chkActive.Checked;
+  FTask.CId := Integer(cbbClass.Items.Objects[cbbClass.ItemIndex]);
   FTask.TaskType := TTaskType(cbbType.ItemIndex);
   FTask.ExecNum := seExecNum.Value;
-  FTask.SetTime(timeType, timeRec);
+  FTask.TimeType := timeType;
+  FTask.TimeRec := timeRec;
   FTask.Param := edtParam.Text;
-  FTask.Content := edtContent.Text;
-  g_TaskMgr.Update(isAdd, FTask);
+  FTask.Content := mmoContent.Text;
+  FTask.TmpExecNum := chkTmpExecNum.Checked;
+  FTask.Update;
+  FTask.ResetLoop;
+  FTask.AssignUI(Item);
 
   Close;
 end;
@@ -223,20 +280,20 @@ procedure TfrmAddTask.chkEveryDayClick(Sender: TObject);
 begin
   if Self.Showing then
     FToolTip.EndPopup;
+
   { 初始状态 }
-  chkLoop.Enabled := not chkEveryDay.Checked;
-  chkEveryDay.Enabled := not chkLoop.Checked;
+  chkLoop.Enabled := not (chkEveryDay.Checked or chkMonthly.Checked);
+  chkMonthly.Enabled := not (chkEveryDay.Checked or chkLoop.Checked);
+  chkEveryDay.Enabled := not (chkLoop.Checked or chkMonthly.Checked);
   chkWeek.Enabled := chkEveryDay.Checked or chkLoop.Checked;
   if not chkWeek.Enabled then
     chkWeek.Checked := False;
 
-  { 循环 }
+  seExecNum.Enabled := True;
   if chkLoop.Checked then
-  begin
+  begin                                 { 循环 }
     edtTime.Text := '60';
     edtTime.MaxLength := 9;             //999 999 999 < MAX_DWORD
-    chkEveryDay.Checked := False;
-    seExecNum.Enabled := True;
     SetWindowLong(edtTime.Handle, GWL_STYLE,
       GetWindowLong(edtTime.Handle, GWL_STYLE) or ES_NUMBER);
 
@@ -252,8 +309,11 @@ begin
     begin                               { 每日 }
       edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongTimeFormat, now);
       edtTime.MaxLength := 8;
-      chkLoop.Checked := False;
-      seExecNum.Enabled := True;
+    end
+    else if chkMonthly.Checked then
+    begin                               { 每月 }
+      edtTime.Text := FormatDateTime('dd hh:mm:ss', now);
+      edtTime.MaxLength := 11;
     end
     else
     begin                               { 日期 }
@@ -286,19 +346,102 @@ begin
 end;
 
 procedure TfrmAddTask.cbbTypeChange(Sender: TObject);
+var
+  s                 : string;
+  tt                : TTaskType;
 begin
-  if TTaskType(TComboBox(Sender).ItemIndex) in [ttSendEmail] then
+  tt := TTaskType(TComboBox(Sender).ItemIndex);
+
+  if tt in [ttSendEmail] then
     lblParam.Caption := '参数:'
   else
     lblParam.Caption := '备注:';
 
-  edtContent.Enabled := not (TTaskType(TComboBox(Sender).ItemIndex) in
+  mmoContent.Enabled := not (tt in
     [ttShutdownSys, ttRebootSys, ttLogoutSys, ttLockSys, ttSuspendSys]);
 
-  if edtContent.Enabled then
-    edtContent.Color := clWindow
+  s := '例如:'#13#10;
+  case tt of
+    ttExec,
+      ttParamExec,
+      ttDownExec,
+      ttKillProcess,
+      ttWakeUp:
+      begin
+        FContentTip := '每行执行一次！';
+        case tt of
+          ttExec:
+            s := s
+              + 'http://www.yryz.net'#13#10
+              + 'd:\mp3\alarm.mp3';
+
+          ttParamExec:
+            s := s
+              + 'ping 127.0.0.1'#13#10
+              + 'shutdown -s';
+
+          ttDownExec:
+            s := s
+              + 'http://im.qq.com/qq.exe';
+
+          ttKillProcess:
+            s := s
+              + 'qq.exe'#13#10
+              + 'cmd.exe';
+
+          ttWakeUp:
+            s := s
+              + '00-e0-4d-df-7e-8a'#13#10
+              + '00-e0-4d-df-88-1c';
+        end;
+      end;
+
+    ttCmdExec,
+      ttMsgTip,
+      ttSendEmail,
+      ttSendKey:
+      begin
+        FContentTip := '';
+        case tt of
+          ttCmdExec:
+            s := s
+              + 'del c:\*.log'#13#10
+              + 'mkdir c:\s'#13#10
+              + 'systeminfo > c:\s\s.txt';
+
+          ttMsgTip:
+            s := s
+              + '该睡觉了~~！';
+
+          ttSendEmail:
+            s := s
+              + '文件'#13#10
+              + 'c:\s\s.txt'#13#10
+              + '文字'#13#10
+              + 'SMTP Test!';
+
+          ttSendKey:
+            s := s
+              + '^%z'#13#10
+              + '模拟 Ctrl+Alt+Z';
+        end;
+      end;
+
+    ttShutdownSys,
+      ttRebootSys,
+      ttLogoutSys,
+      ttLockSys,
+      ttSuspendSys:
+      FContentTip := '无内容！';
   else
-    edtContent.Color := clBtnFace;
+    FContentTip := '此类型无提示.';
+  end;
+
+  mmoContent.Hint := s;
+  if mmoContent.Enabled then
+    mmoContent.Color := clWindow
+  else
+    mmoContent.Color := clBtnFace;
 end;
 
 procedure TfrmAddTask.FormMouseDown(Sender: TObject; Button: TMouseButton;
@@ -312,6 +455,12 @@ end;
 procedure TfrmAddTask.FormPaint(Sender: TObject);
 begin
   DrawRoundForm(Handle, Width, Height, $00CD746D);
+end;
+
+procedure TfrmAddTask.mmoContentEnter(Sender: TObject);
+begin
+  if Self.Showing and (FContentTip <> '') then
+    FToolTip.Popup(TWinControl(Sender).Handle, ttInformationIcon, '提示', FContentTip);
 end;
 
 end.

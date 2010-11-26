@@ -3,41 +3,56 @@ unit TaskMgr_u;
 interface
 uses
   Windows, SysUtils, Classes, Graphics, ExtCtrls, ComCtrls,
-  ShellAPI, SQLite3, SQLiteTable3, HouListView;
+  ShellAPI, SQLite3, SQLiteTable3, HouListView, DateUtils,
+  DB_u, WinHttp;
 
 type
-  TTaskType = (ttExec, ttParamExec, ttDownExec, ttKillProcess, ttCmdExec,
-    ttWakeUp, ttMsgTip, ttSendEmail, ttSendKey, ttShutdownSys, ttRebootSys,
-    ttLogoutSys, ttLockSys, ttSuspendSys);
+  TTaskType = (
+    ttExec,
+    ttParamExec,
+    ttDownExec,
+    ttKillProcess,
+    ttCmdExec,
+    ttWakeUp,
+    ttMsgTip,
+    ttSendEmail,
+    ttSendKey,
+    ttShutdownSys,
+    ttRebootSys,
+    ttLogoutSys,
+    ttLockSys,
+    ttSuspendSys);
+
+  //任务分类类型
+  TTaskClass = (tcActive,               //活动
+    tcAll,                              //所有
+    tcByType,                           //按类型
+    tcByClass,                          //按分类
+    tcNoneClass,                        //未分类
+    tcStat                              //计数
+    );
 const
-  ONTIME_DB_KEY     = '';
-  TASK_TYPE_STR     : array[TTaskType] of string[8] =
+  TASK_TYPE_STR     : array[TTaskType] of string =
     ('普通运行', '参数运行', '下载运行', '结束进程', '执行DOS', '网络唤醒',
     '消息提示', '发送邮件', '模拟按键', '关闭系统', '重启系统', '注销登陆',
     '锁定系统', '系统待机');
 
-  { OPTION SQL }
-  SQL_CREATE_OPTION = 'CREATE TABLE option(ver INTEGER,shortcut INTEGER,'
-    + 'smtpserver TEXT,smtpport INTEGER,smtpuser TEXT,smtppass TEXT)';
-  SQL_INSERT_OPTION = 'INSERT INTO option(smtpserver,smtpport,smtpuser,smtppass'
-    + ') VALUES("smtp.126.com",25,"ontimer","")';
-  SQL_UPDATE_OPTION = 'UPDATE option SET shortcut=?,smtpserver=?,smtpport=?,'
-    + 'smtpuser=?,smtppass=?';
-  { TASK SQL }
-  SQL_CREATE_TASKLIST = 'CREATE TABLE tasklist(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,'
-    + 'checked INTEGER,tasktype INTEGER,timetype INTEGER,time INTEGER,content TEXT,'
-    + 'param TEXT,execnum INTEGER)';
-  SQL_SELECT_OPTION = 'SELECT * FROM option';
-  SQL_SELECT_TASKLIST = 'SELECT * FROM tasklist';
-  SQL_INSERT_TASK   = 'INSERT INTO tasklist(checked,tasktype,timetype,time,'
-    + 'content,param,execnum) VALUES(?,?,?,?,?,?,?)';
-  SQL_UPDATE_TASK   = 'UPDATE tasklist SET checked=?,tasktype=?,timetype=?,time=?,'
-    + 'content=?,param=?,execnum=? WHERE id=';
-  SQL_UPDATE_TASK2  = 'UPDATE tasklist SET checked=? WHERE id=';
-  SQL_DELETE_TASK   = 'DELETE FROM tasklist WHERE id=';
+  TASK_CLASS_STR    : array[TTaskClass] of string =
+    ('活动任务', '所有任务', '任务类型', '任务分类', '未分类', '0');
+  TASK_CLASS_IMG    : array[TTaskClass] of Integer =
+    (0, 1, 2, 3, 4, 5);
+
+const
+  DATETIME_FORMAT_SETTINGS: TFormatSettings = (
+    DateSeparator: '-';
+    TimeSeparator: ':';
+    ShortDateFormat: 'yyyy-MM-dd';
+    LongDateFormat: 'yyyy-MM-dd hh:mm:ss';
+    ShortTimeFormat: 'hh:mm';
+    LongTimeFormat: 'hh:mm:ss');
 
 type
-  TTimeType = (ttDateTime, ttTime, ttLoop, ttWeekOfTime, ttWeekOfLoop);
+  TTimeType = (tmDateTime, tmTime, tmLoop, tmMonthly);
   TWeekOfDay = (wdNone, wdSun, wdMon, wdTue, wdWed, wdThu, wdFri, wdSat);
   PWeekSet = ^TWeekSet;
   TWeekSet = set of TWeekOfDay;
@@ -50,61 +65,118 @@ type
   PTimeStamp = ^TTimeStamp;
 
 type
+  TTask = class;
   TTaskMgr = class;
+  TTaskClasses = class;
 
   PTask = ^TTask;
-  TTask = class(TListItem)              //TListView中添加此Item
+  TTask = class(TObject)                //TListView中添加此Item
   private
-    FId: Integer;
+    FNew: Boolean;                      //新数据(DB无记录)
+    FOwner: TTaskMgr;
+    FItemUI: TListItem;
+
+    FActive: Boolean;
+    FId: Integer;                       //任务ID
+    FCId: Integer;                      //分类ID
     FExecNum: Integer;                  //可执行次数
     FTaskType: TTaskType;
     FTimeType: TTimeType;               //记时类型
-    FLoopTime: DWORD;                   //倒计时计数
-    FIsWeek: Boolean;                   //是否作星期判断，只对时间、倒计时有效
     FWeekStr: string;
     FTimeRec: TTimeRec;                 //设定日期、时间、星期、倒计时
     FParam: string;
     FContent: string;
-    procedure SetContent(const Value: string);
-    procedure SetParam(const Value: string);
-    procedure SetTaskType(const Value: TTaskType);
-    procedure SetExecNum(const Value: Integer);
+
+    FLoopTime: DWORD;                   //倒计时计数
+
+    FTmpExecNum: Boolean;               //临时执行计数
+  protected
+    function DecLoop: Integer;          //调用一次，减一秒
+    function DecExecNum: Integer;
   public
-    constructor Create(Items: TListItems);
+    constructor Create(AOwner: TTaskMgr; bNew: Boolean);
     destructor Destroy; override;
     procedure Execute;
-    function DecLoop: Integer;          //调用一次，减一秒
-    procedure SetTime(timeType: TTimeType; Value: TTimeRec);
-  published
+
+    function CheckTime(dateTime: TDateTime): Integer; //< 0 过期; 0 已到; > 0 未到
+
+    function IsWeek(): Boolean;
+    function IsActive(): Boolean;
+    procedure AssignUI(Item: TListItem); //绑定UI
+    procedure ResetLoop();
+
+    //DB
+    function Update(): Integer;         //更新DB
+    function Delete(OnlySelected: Boolean): Integer;
+
+    procedure UpdateCId(const Value: Integer);
+    procedure UpdateActive(const Value: Boolean);
+    procedure UpdateIndex(const Value: Integer); overload;
+    procedure UpdateIndex(const DstTask: TTask); overload;
+
     property Id: Integer read FId write FId;
-    property ExecNum: Integer read FExecNum write SetExecNum;
-    property TaskType: TTaskType read FTaskType write SetTaskType;
-    property timeType: TTimeType read FTimeType;
-    property IsWeek: Boolean read FIsWeek;
+    property CId: Integer read FCId write FCId;
+    property Active: Boolean read FActive write FActive;
+    property ExecNum: Integer read FExecNum write FExecNum;
+    property TaskType: TTaskType read FTaskType write FTaskType;
+    property TimeType: TTimeType read FTimeType write FTimeType;
     property TimeRec: TTimeRec read FTimeRec write FTimeRec;
-    property Param: string read FParam write SetParam;
-    property Content: string read FContent write SetContent;
+    property Param: string read FParam write FParam;
+    property Content: string read FContent write FContent;
+    property TmpExecNum: Boolean read FTmpExecNum write FTmpExecNum;
+
+    property ItemUI: TListItem read FItemUI;
+  end;
+
+  { 自定义分类 }
+  TClassNode = array[TTaskClass] of TTreeNode;
+  TTaskClasses = class(TObject)
+  private
+    FTv: TTreeView;
+    FOwner: TTaskMgr;
+    FClassNode: TClassNode;
+  protected
+    procedure LoadClass;
+  public
+    constructor Create(AOwner: TTaskMgr; tvClass: TTreeView);
+    destructor Destroy; override;
+
+    function New(Name: string): TTreeNode;
+    function Update(isAdd: Boolean; id, idx: Integer; Name: string): Integer;
+    function Delete(id: Integer): Integer;
+
+    property Tv: TTreeView read FTv;
+    property ClassNode: TClassNode read FClassNode;
   end;
 
   TTaskMgr = class(TObject)
   private
     FLv: THouListView;
-    FItems: TListItems;
+    FList: TList;
     FTaskDB: TSQLiteDatabase;
-    FActiveTask: Integer;
+    FClasses: TTaskClasses;
+
+    function GetMaxIdx: Integer;        //最大任务索引
+    function GetActiveTask: Integer;
   public
-    constructor Create(lvTask: THouListView);
+    constructor Create(tvClass: TTreeView; lvTask: THouListView);
     destructor Destroy; override;
-    procedure LoadTask;
-    function Make(bChecked: Boolean): TTask;
-    procedure Update(isAdd: Boolean; Task: TTask);
-    procedure UpdateCheckState(Task: TTask; bChecked: Boolean);
+    procedure LoadDB;
+    procedure LoadUI(taskClass: TTaskClass; nValue: Integer; Keyword: string);
+
+    function NewTask(bNew: Boolean): TTask;
+
     procedure UpdateOption;
+
     function DeleteSelected: Integer;
     procedure OnTimer(dateTime: TDateTime);
+
+    procedure UpdateTaskCount;
   public
-    property Items: TListItems read FItems;
-    property ActiveTask: Integer read FActiveTask;
+    property Lv: THouListView read FLv;
+    property List: TList read FList;
+    property Classes: TTaskClasses read FClasses;
+    property ActiveTask: Integer read GetActiveTask;
   end;
 
   TOption = record
@@ -145,13 +217,8 @@ end;
 
 constructor TTask.Create;
 begin
-  inherited Create(Items);
-  SubItems.Add('');                     //时间
-  SubItems.Add('');                     //类型
-  SubItems.Add('');                     //内容
-  SubItems.Add('');                     //附加参数
-  SubItems.Add('');                     //可执行次数
-  Data := Self;
+  FNew := bNew;
+  FOwner := AOwner;
 end;
 
 destructor TTask.Destroy;
@@ -161,47 +228,83 @@ end;
 
 procedure TTask.Execute;
 var
-  dwThID            : DWORD;
+  i                 : Integer;
+  dwID              : DWORD;
+  sList             : TStringList;
+  sContent          : string;
 begin
   case FTaskType of
-    ttExec:
-      ShellExecute(0, nil, PChar(FContent), nil, PChar(GetCurrentDir), SW_SHOW); //运行
-    ttParamExec:
-      WinExec(PChar(FContent), SW_SHOW);
-    ttDownExec:
-      CloseHandle(BeginThread(nil, 0, @DownloadExec, PChar(FContent), 0, dwThID));
-    ttKillProcess:
+    ttExec,
+      ttParamExec,
+      ttDownExec,
+      ttKillProcess,
+      ttWakeUp:
       begin
-        SetPrivilege('SeDebugPrivilege');
-        KillTask(PChar(FContent));
+        sList := TStringList.Create;
+        sList.Text := FContent;
+
+        for i := 0 to sList.Count - 1 do
+        begin
+          sContent := sList.Strings[i];
+          case FTaskType of
+            ttExec:
+              ShellExecute(0, nil, PChar(sContent), nil, PChar(GetCurrentDir), SW_SHOW); //运行
+            ttParamExec:
+              WinExec(PChar(sContent), SW_SHOW);
+            ttDownExec:
+              CloseHandle(BeginThread(nil, 0, @DownloadExec, PChar(sContent), 0, dwID));
+            ttKillProcess:
+              begin
+                SetPrivilege('SeDebugPrivilege');
+                KillTask(PChar(sContent));
+              end;
+            ttWakeUp:
+              WakeUpPro(sContent);
+          end;
+        end;
+        sList.Free;
       end;
+
     ttCmdExec:
-      WinExec(PChar('cmd /c ' + FContent), SW_SHOW);
+      begin
+        sContent := StringReplace(FContent, sLineBreak, '&', [rfReplaceAll]);
+        WinExec(PChar('cmd /c ' + sContent), SW_SHOW);
+      end;
+
     ttSendKey:
-      SendKeys(PChar(FContent), False);
+      begin
+        sContent := StringReplace(FContent, sLineBreak, '~', [rfReplaceAll]);
+        SendKeys(PChar(sContent), False);
+      end;
+
     ttSendEmail:
-      CloseHandle(BeginThread(nil, 0, @SendMail, Self, 0, dwThID));
-    ttWakeUp:
-      WakeUpPro(FContent);
+      CloseHandle(BeginThread(nil, 0, @SendMail, Self, 0, dwID));
+
     ttMsgTip:
       TPopTooltip.ShowMsg(FContent,
         ExtractFilePath(ParamStr(0)) + 'OnTimer.jpg', INFINITE);
+
     ttShutdownSys:
       begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_SHUTDOWN or EWX_FORCE, 0); {关机}
       end;
+
     ttRebootSys:
       begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_REBOOT or EWX_FORCE, 0); {重启}
       end;
+
     ttLogoutSys:
       begin
         SetPrivilege('SeShutdownPrivilege');
         ExitWindowsEX(EWX_LOGOFF or EWX_FORCE, 0); {注销}
       end;
-    ttLockSys: LockWorkStation;
+
+    ttLockSys:
+      LockWorkStation;
+
     ttSuspendSys:
       begin
         SetPrivilege('SeShutdownPrivilege');
@@ -209,87 +312,490 @@ begin
       end;
   end;
 
-  ImageIndex := 1;
-  if FExecNum > 0 then
-    SetExecNum(FExecNum - 1);
+  Self.DecExecNum;
 end;
 
 function TTask.DecLoop;
 begin
   Dec(FLoopTime);
   Result := FLoopTime;
-  Caption := FWeekStr + IntToStr(Result);
+  if Assigned(FItemUI) then
+    FItemUI.Caption := FWeekStr + IntToStr(Result);
+
   if Result <= 0 then
     FLoopTime := FTimeRec.TimeOrLoop;
 end;
 
-procedure TTask.SetTime;
+function TTask.DecExecNum;
 var
+  sql               : string;
+  Table             : TSQLiteTable;
+begin
+  if FExecNum > 0 then
+  begin
+    Dec(FExecNum);
+
+    if Assigned(FItemUI) then
+    begin
+      FItemUI.ImageIndex := 1;
+      FItemUI.SubItems.Strings[3] := IntToStr(FExecNum);
+    end;
+
+    if not FTmpExecNum then             //记录次数
+      try
+        sql := SQL_UPDATE_TASK_EXECNUM + IntToStr(FId);
+        Table := TSQLiteTable.Create(FOwner.FTaskDB, sql, [FExecNum]);
+      finally
+        Table.Free;
+      end;
+  end;
+  Result := FExecNum;
+end;
+
+procedure TTask.AssignUI;
+var
+  T                 : TListItem;
   weekSet           : TWeekSet;
 begin
-  FTimeRec := Value;
-  FTimeType := timeType;
-  case timeType of
-    {　固定日期　}
-    ttDateTime: Caption := FormatDateTime('yyyy-MM-dd hh:mm:ss',
-        TimeStampToDateTime(PTimeStamp(@Value)^));
-    {　周期时间　}
-    ttLoop, ttTime:
-      begin
-        weekSet := PWeekSet(@Value.DateOrWeek)^;
-        FWeekStr := '';
-        if wdMon in weekSet then
-          FWeekStr := FWeekStr + '1';
-        if wdTue in weekSet then
-          FWeekStr := FWeekStr + '2';
-        if wdWed in weekSet then
-          FWeekStr := FWeekStr + '3';
-        if wdThu in weekSet then
-          FWeekStr := FWeekStr + '4';
-        if wdFri in weekSet then
-          FWeekStr := FWeekStr + '5';
-        if wdSat in weekSet then
-          FWeekStr := FWeekStr + '6';
-        if wdSun in weekSet then
-          FWeekStr := FWeekStr + '7';
-        FIsWeek := FWeekStr <> '';
-        if FIsWeek then
-          FWeekStr := FWeekStr + '^.';
+  if FItemUI <> Item then
+  begin                                 //新UI
+    if FItemUI <> nil then
+    begin                               //删除原UI
+      T := FItemUI;
+      FItemUI := nil;
+      T.Delete;
+    end;
+    FItemUI := Item;
+  end;
 
-        if FTimeType = ttLoop then
+  if FItemUI = nil then
+    Exit;
+
+  THouListView(ItemUI.Owner.Owner).IgnoreCheck := True;
+  try
+    ItemUI.Checked := FActive;
+  finally
+    THouListView(ItemUI.Owner.Owner).IgnoreCheck := False;
+  end;
+
+  //时间
+  case FTimeType of
+    {　固定日期　}
+    tmDateTime:
+      ItemUI.Caption := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat,
+        TimeStampToDateTime(PTimeStamp(@FTimeRec)^));
+
+    { 每月 }
+    tmMonthly:
+      ItemUI.Caption := IntToStr(FTimeRec.DateOrWeek) + ' '
+        + FormatDateTime(DATETIME_FORMAT_SETTINGS.LongTimeFormat,
+        TimeStampToDateTime(PTimeStamp(@FTimeRec)^));
+
+    {　周期时间　}
+    tmLoop, tmTime:
+      begin
+        weekSet := PWeekSet(@FTimeRec.DateOrWeek)^;
+        FWeekStr := '';
+        if IsWeek then
         begin
-          FLoopTime := Value.TimeOrLoop;
-          Caption := FWeekStr + IntToStr(FLoopTime);
-        end
+          if wdMon in weekSet then
+            FWeekStr := FWeekStr + '1';
+          if wdTue in weekSet then
+            FWeekStr := FWeekStr + '2';
+          if wdWed in weekSet then
+            FWeekStr := FWeekStr + '3';
+          if wdThu in weekSet then
+            FWeekStr := FWeekStr + '4';
+          if wdFri in weekSet then
+            FWeekStr := FWeekStr + '5';
+          if wdSat in weekSet then
+            FWeekStr := FWeekStr + '6';
+          if wdSun in weekSet then
+            FWeekStr := FWeekStr + '7';
+
+          FWeekStr := FWeekStr + '^.';
+        end;
+
+        if FTimeType = tmLoop then
+          ItemUI.Caption := FWeekStr + IntToStr(FLoopTime)
         else
-          Caption := FWeekStr + FormatDateTime('hh:mm:ss',
-            TimeStampToDateTime(PTimeStamp(@Value)^));
+          ItemUI.Caption := FWeekStr + FormatDateTime(
+            DATETIME_FORMAT_SETTINGS.LongTimeFormat,
+            TimeStampToDateTime(PTimeStamp(@FTimeRec)^));
+      end;
+  end;
+
+  with ItemUI.SubItems do
+  begin
+    Clear;
+    Add(TASK_TYPE_STR[FTaskType]);      //类型
+    Add(FContent);                      //内容
+    Add(FParam);                        //附加参数
+    Add(IntToStr(FExecNum));            //可执行次数
+  end;
+  ItemUI.Data := Self;
+end;
+
+function TTask.CheckTime(dateTime: TDateTime): Integer;
+var
+  timeStamp         : TTimeStamp;
+begin
+  Result := -1;
+  timeStamp := DateTimeToTimeStamp(dateTime);
+  case FTimeType of
+    tmDateTime:
+      begin                             //日期时间
+        Result := DWORD(FTimeRec.DateOrWeek) - DWORD(timeStamp.Date);
+        if Result = 0 then
+          Result := DWORD(FTimeRec.TimeOrLoop div MSecsPerSec)
+            - DWORD(timeStamp.Time div MSecsPerSec);
+
+        if Result < 0 then              //过期？
+          Exit;
+      end;
+
+    tmMonthly:
+      begin                             //每月
+        Result := DWORD(FTimeRec.DateOrWeek) - DayOf(dateTime);
+        if Result = 0 then
+          Result := DWORD(FTimeRec.TimeOrLoop div MSecsPerSec)
+            - DWORD(timeStamp.Time div MSecsPerSec);
+      end;
+
+    tmLoop, tmTime:
+      begin
+        if not IsWeek
+          or (TWeekOfDay(timeStamp.Date mod 7 + 1) in
+          PWeekSet(@FTimeRec.DateOrWeek)^) then
+        begin
+          if FTimeType = tmLoop then    //倒计时秒
+            Result := DecLoop
+          else                          //时间
+            Result := DWORD(FTimeRec.TimeOrLoop div MSecsPerSec)
+              - DWORD(timeStamp.Time div MSecsPerSec);
+        end;
+      end;
+  end;
+
+  if Result <> 0 then
+    Result := MaxInt;
+end;
+
+function TTask.IsActive: Boolean;
+begin
+  Result := FActive and (FExecNum > 0);
+  if FTimeType <> tmLoop then           // 防止CheckTime() call DecLoop()
+    Result := Result and (CheckTime(Now) >= 0); //时间判断
+end;
+
+function TTask.Delete;
+begin
+  Result := -1;
+
+  if OnlySelected then                  //只删已选中
+  begin
+    if (FItemUI <> nil) and FItemUI.Selected then
+      FOwner.FTaskDB.ExecSQL(SQL_DELETE_TASK + IntToStr(FId))
+    else
+      Exit;
+  end;
+
+  AssignUI(nil);
+  Result := FId;
+  Free;
+end;
+
+function TTask.Update;
+var
+  sql               : string;
+  Table             : TSQLiteTable;
+begin
+  if FNew then
+    sql := SQL_INSERT_TASK
+  else
+    sql := SQL_UPDATE_TASK + IntToStr(FId);
+
+  try
+    Table := TSQLiteTable.Create(FOwner.FTaskDB, sql,
+      [FActive,
+      FCId,
+        Integer(FTaskType),
+        Integer(FTimeType),
+        PInt64(@FTimeRec)^,
+        FContent,
+        FParam,
+        FExecNum,
+        FTmpExecNum]);
+
+    if FNew then
+    begin
+      FNew := False;
+      FId := FOwner.FTaskDB.GetLastInsertRowID;
+      UpdateIndex(FOwner.GetMaxIdx);
+    end;
+  finally
+    Table.Free;
+  end;
+
+  Result := FId;
+end;
+
+procedure TTask.UpdateCId(const Value: Integer);
+var
+  sql               : string;
+  Table             : TSQLiteTable;
+begin
+  if FCId <> Value then
+  begin
+    FCId := Value;
+    if not FNew then
+      try
+        sql := SQL_UPDATE_TASK_CLASS + IntToStr(FId);
+        Table := TSQLiteTable.Create(FOwner.FTaskDB, sql, [Value]);
+      finally
+        Table.Free;
+      end;
+
+    //跟新UI
+    with FOwner.Classes do
+      if not (ClassNode[tcActive].Selected
+        or ClassNode[tcAll].Selected
+        or (Tv.Selected.Parent = ClassNode[tcByType])) then
+      begin
+        AssignUI(nil);
+        FOwner.UpdateTaskCount;
       end;
   end;
 end;
 
-procedure TTask.SetContent(const Value: string);
+procedure TTask.UpdateActive(const Value: Boolean);
+var
+  sql               : string;
+  Table             : TSQLiteTable;
 begin
-  FContent := Value;
-  SubItems.Strings[1] := Value;
+  if FActive <> Value then
+  begin
+    FActive := Value;
+    if not FNew then
+      try
+        sql := SQL_ACTIVE_TASK + IntToStr(FId);
+        Table := TSQLiteTable.Create(FOwner.FTaskDB, sql, [Value]);
+      finally
+        Table.Free;
+      end;
+  end;
 end;
 
-procedure TTask.SetParam(const Value: string);
+procedure TTask.UpdateIndex(const Value: Integer);
+var
+  sql               : string;
+  Table             : TSQLiteTable;
 begin
-  FParam := Value;
-  SubItems.Strings[2] := Value;
+  try
+    sql := SQL_UPDATE_TASK_IDX + IntToStr(FId);
+    Table := TSQLiteTable.Create(FOwner.FTaskDB, sql, [Value]);
+  finally
+    Table.Free;
+  end;
 end;
 
-procedure TTask.SetTaskType(const Value: TTaskType);
+procedure TTask.UpdateIndex(const DstTask: TTask);
+var
+  idx, idx2         : Integer;
+  i, m, n           : Integer;
+  bInc              : Boolean;
+  Task              : TTask;
 begin
-  FTaskType := Value;
-  SubItems.Strings[0] := TASK_TYPE_STR[Value];
+  with FOwner.List do
+  begin
+    idx := IndexOf(Self);
+    Assert(idx <> -1);
+    idx2 := FOwner.FList.IndexOf(DstTask);
+    Assert(idx2 <> -1);
+
+    if (idx <> idx2) then
+    begin
+      { 移动相关Item }
+      bInc := idx2 < idx;
+      if bInc then
+      begin
+        n := idx2;
+        m := idx - 1;
+      end
+      else
+      begin
+        n := idx + 1;
+        m := idx2;
+      end;
+
+      try
+        FOwner.FTaskDB.BeginTransaction;
+
+        for i := n to m do
+        begin
+          Task := Items[i];
+          if bInc then
+            Task.UpdateIndex(i + 1)
+          else
+            Task.UpdateIndex(i - 1);
+        end;
+
+        { 移动Self }
+        UpdateIndex(idx2);
+
+        Task := Items[idx];
+        Delete(idx);
+        Insert(idx2, Task);
+      finally
+        FOwner.FTaskDB.Commit;
+      end;
+    end;
+  end;
 end;
 
-procedure TTask.SetExecNum(const Value: Integer);
+{ TTaskClass }
+
+constructor TTaskClasses.Create;
+var
+  tc                : TTaskClass;
+  tt                : TTaskType;
 begin
-  FExecNum := Value;
-  SubItems.Strings[3] := IntToStr(Value);
+  FTv := tvClass;
+  FOwner := AOwner;
+
+  { 分类 }
+  FTv.Items.BeginUpdate;
+  try
+    //顶级分类
+    for tc := Low(TTaskClass) to High(TTaskClass) do
+    begin
+      FClassNode[tc] := FTv.Items.Add(nil, TASK_CLASS_STR[tc]);
+      with FClassNode[tc] do
+      begin
+        ImageIndex := TASK_CLASS_IMG[tc];
+        SelectedIndex := TASK_CLASS_IMG[tc];
+      end;
+    end;
+
+    //类型分类
+    for tt := Low(TTaskType) to High(TTaskType) do
+      with FTv.Items.AddChildObject(FClassNode[tcByType], TASK_TYPE_STR[tt], Pointer(tt)) do
+      begin
+        ImageIndex := Parent.ImageIndex;
+        SelectedIndex := Parent.SelectedIndex;
+      end;
+  finally
+    FTv.Items.EndUpdate;
+  end;
+end;
+
+destructor TTaskClasses.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TTaskClasses.LoadClass;
+var
+  i                 : Integer;
+  Table             : TSQLiteTable;
+begin
+  FTv.Items.BeginUpdate;
+  try
+    //自定义分类
+    Table := TSQLiteTable.Create(FOwner.FTaskDB, SQL_SELECT_CLASS, []);
+    try
+      with Table do
+        for i := 0 to RowCount - 1 do
+        begin
+          with FTv.Items.AddChildObject(FClassNode[tcByClass],
+            FieldAsString(3),           //name
+            Pointer(FieldAsInteger(0))  //id
+            ) do
+          begin
+            ImageIndex := Parent.ImageIndex;
+            SelectedIndex := Parent.SelectedIndex;
+            Sleep(Integer(Data));
+          end;
+          Next;
+        end;
+    finally
+      Table.Free;
+    end;
+  finally
+    FTv.Items.EndUpdate;
+  end;
+end;
+
+function TTaskClasses.New(Name: string): TTreeNode;
+var
+  Node              : TTreeNode;
+begin
+  Result := nil;
+  if Name = '' then
+    Exit;
+
+  Node := FTv.Selected;
+  if Node.Parent <> nil then
+    Result := FTv.Items.Add(Node, Name)
+  else
+    Result := FTv.Items.AddChild(Node, Name);
+
+  Result.ImageIndex := Node.ImageIndex;
+  Result.SelectedIndex := Node.SelectedIndex;
+
+  Result.Data := Pointer(Update(True, 0, Result.Index, Name));
+end;
+
+function TTaskClasses.Update;
+var
+  sql               : string;
+  Table             : TSQLiteTable;
+begin
+  Result := id;
+
+  if isAdd then
+    sql := SQL_INSERT_CLASS
+  else
+    sql := SQL_UPDATE_CLASS + IntToStr(id);
+
+  try
+    Table := TSQLiteTable.Create(FOwner.FTaskDB, sql, [idx, Name]);
+    if isAdd then
+      Result := FOwner.FTaskDB.GetLastInsertRowID;
+  finally
+    Table.Free;
+  end;
+end;
+
+function TTaskClasses.Delete(id: Integer): Integer;
+var
+  i                 : Integer;
+  sql               : string;
+  Table             : TSQLiteTable;
+  Task              : TTask;
+begin
+  sql := SQL_DELETE_CLASS + IntToStr(id);
+  FOwner.FTaskDB.ExecSQL(sql);
+
+  for i := FOwner.FList.Count - 1 downto 0 do
+  begin
+    Task := FOwner.FList[i];
+    if Task.CId = id then
+      Task.UpdateCId(0);
+  end;
+
+  Result := id;
+end;
+
+function TTask.IsWeek: Boolean;
+begin
+  Result := not (PWeekSet(@FTimeRec.DateOrWeek)^ = [wdNone]);
+end;
+
+procedure TTask.ResetLoop;
+begin
+  FLoopTime := FTimeRec.TimeOrLoop;
 end;
 
 { TTaskMgr }
@@ -297,77 +803,33 @@ end;
 constructor TTaskMgr.Create;
 begin
   FLv := lvTask;
-  FItems := lvTask.Items;
+  FList := TList.Create;
+  FClasses := TTaskClasses.Create(Self, tvClass);
 end;
 
 destructor TTaskMgr.Destroy;
 var
   I                 : Integer;
 begin
-  if FItems.Count > 0 then
-    for I := FItems.Count - 1 downto 0 do
-      with FItems[I] do
-      begin
-        TTask(Data).Free;
-        Delete();
-      end;
+  with FList do
+  begin
+    if Count > 0 then
+    begin
+      for I := Count - 1 downto 0 do
+        TTask(Items[I]).Free;
+    end;
+    Free;
+  end;
+
   if Assigned(FTaskDB) then
     FTaskDB.Free;
   inherited;
 end;
 
-function TTaskMgr.Make;
+function TTaskMgr.NewTask;
 begin
-  FLv.IgnoreCheck := True;
-  try
-    Result := TTask.Create(FItems);
-    FItems.AddItem(Result, 0);
-    Result.Checked := bChecked;
-
-    if bChecked then
-      Inc(FActiveTask);
-  finally
-    FLv.IgnoreCheck := False;
-  end;
-end;
-
-procedure TTaskMgr.Update;
-var
-  sql               : string;
-  Table             : TSQLiteTable;
-begin
-  if isAdd then
-    sql := SQL_INSERT_TASK
-  else
-    sql := SQL_UPDATE_TASK + IntToStr(Task.Id);
-  try
-    Table := TSQLiteTable.Create(FTaskDB, sql, [Task.Checked,
-      Integer(Task.TaskType), Integer(Task.timeType), PInt64(@Task.TimeRec)^,
-        Task.Content, Task.Param, Task.ExecNum]);
-    if isAdd then
-      Task.Id := FTaskDB.GetLastInsertRowID;
-  finally
-    Table.Free;
-  end;
-end;
-
-procedure TTaskMgr.UpdateCheckState;
-var
-  Table             : TSQLiteTable;
-begin
-  if Task.Checked <> bChecked then
-    try
-      if Task.ExecNum > 0 then
-        if bChecked then
-          Inc(FActiveTask)
-        else
-          Dec(FActiveTask);
-
-      Table := TSQLiteTable.Create(FTaskDB, SQL_UPDATE_TASK2 + IntToStr(Task.Id),
-        [bChecked]);
-    finally
-      Table.Free;
-    end;
+  Result := TTask.Create(Self, bNew);
+  FList.Add(Result);
 end;
 
 procedure TTaskMgr.UpdateOption;
@@ -385,117 +847,72 @@ end;
 
 function TTaskMgr.DeleteSelected;
 var
-  I                 : Integer;
+  i                 : Integer;
 begin
   Result := -1;
-  if FItems.Count < 1 then
+  if FList.Count < 1 then
     Exit;
 
-  for I := FItems.Count - 1 downto 0 do
-    with FItems[I] do
-      if Selected then
-      begin
-        if Assigned(FTaskDB) then
-          FTaskDB.ExecSQL(SQL_DELETE_TASK + IntToStr(TTask(Data).FId));
+  for i := FList.Count - 1 downto 0 do
+  begin
+    Result := TTask(FList[i]).Delete(True);
+    if Result > 0 then
+      FList.Delete(i);
+  end;
 
-        if Checked and (TTask(Data).ExecNum > 0) then
-          Dec(FActiveTask);
-
-        Delete;
-        Result := I;
-      end;
+  UpdateTaskCount;
 end;
 
 procedure TTaskMgr.OnTimer;
 var
-  I                 : Integer;
+  i                 : Integer;
   Task              : TTask;
-  timeStamp         : TTimeStamp;
 begin
-  if FItems.Count < 1 then
+  if FList.Count < 1 then
     Exit;
-  for I := 0 to FItems.Count - 1 do
+
+  for i := 0 to FList.Count - 1 do
   begin
-    Task := FItems[I].Data;
-    if not Task.Checked or
-      (Task.ExecNum < 1) then
+    Task := FList[i];
+    if not Task.Active or (Task.ExecNum < 1) then
       Continue;                         //不可执行
 
-    timeStamp := DateTimeToTimeStamp(dateTime);
-    case Task.timeType of
-      ttDateTime:
-        begin                           //日期时间
-          if (timeStamp.Date <> Task.TimeRec.DateOrWeek) or
-            (timeStamp.Time div MSecsPerSec <>
-            Task.TimeRec.TimeOrLoop div MSecsPerSec) then
-            Continue;
-        end;
-      ttLoop, ttTime:
-        begin
-          if Task.IsWeek then
-          begin                         // 星期
-            if not (TWeekOfDay(timeStamp.Date mod 7 + 1) in
-              PWeekSet(@Task.TimeRec.DateOrWeek)^) then
-              Continue;
-          end;
-
-          if Task.timeType = ttLoop then
-          begin                         //倒计时秒
-            if Task.DecLoop > 0 then
-              Continue;
-          end
-          else
-          begin                         //时间
-            if timeStamp.Time div MSecsPerSec <>
-              Task.TimeRec.TimeOrLoop div MSecsPerSec then
-              Continue;
-          end;
-        end;
-    end;
+    if Task.CheckTime(dateTime) <> 0 then
+      Continue;
 
     Task.Execute;
-
-    if Task.ExecNum = 0 then
-      Dec(FActiveTask);
   end;
 end;
 
-procedure TTaskMgr.LoadTask;
+procedure TTaskMgr.LoadDB;
 var
-  I                 : Integer;
+  i                 : Integer;
   Task              : TTask;
   Table             : TSQLiteTable;
   sDbPath           : string;
 begin
   try
-    sDbPath := ExtractFilePath(ParamStr(0)) + 'OnTimer.db';
+    sDbPath := TDataBase.FileName;
 
     if not FileExists(sDbPath) then
     begin
-      FTaskDB := TSQLiteDatabase.Create(sDbPath, ONTIME_DB_KEY); //使用密码创建数据库
+      FTaskDB := TSQLiteDatabase.Create(sDbPath, ONTIME_DB_KEY);
       FTaskDB.BeginTransaction;
       FTaskDB.ExecSQL(SQL_CREATE_OPTION);
       FTaskDB.ExecSQL(SQL_INSERT_OPTION);
-      FTaskDB.ExecSQL(SQL_CREATE_TASKLIST);
+      FTaskDB.ExecSQL(SQL_CREATE_CLASS);
+      FTaskDB.ExecSQL(SQL_CREATE_TASKS);
       FTaskDB.Commit;
     end
     else
     begin
-      FTaskDB := TSQLiteDatabase.Create(sDbPath, ONTIME_DB_KEY); //使用密码打开数据库
       try
-        if FindCmdLineSwitch('12d-12e', ['/'], True) then
-        begin                           //1.2d to 1.2e CHANGE option
-          try
-            Table := TSQLiteTable.Create(FTaskDB, 'SELECT ver FROM option', []);
-          except
-            FTaskDB.ExecSQL('DROP TABLE option');
-            FTaskDB.ExecSQL(SQL_CREATE_OPTION);
-            FTaskDB.ExecSQL(SQL_INSERT_OPTION);
-            MessageBox(0, '数据库成功转换到1.2e版!', '提示', 0);
-          end;
-          Table.Free;
-        end;
+        if FindCmdLineSwitch('update', ['/'], True) then
+          TDataBase.AutoUpdate;
 
+        FTaskDB := TSQLiteDatabase.Create(sDbPath, ONTIME_DB_KEY);
+
+        { 设置 }
         Table := TSQLiteTable.Create(FTaskDB, SQL_SELECT_OPTION, []);
         if Table.RowCount > 0 then
         begin
@@ -508,38 +925,135 @@ begin
         end;
         Table.Free;
 
-        Table := TSQLiteTable.Create(FTaskDB, SQL_SELECT_TASKLIST, []);
-        FItems.BeginUpdate;
-        try
-          with Table do
-            for I := 0 to RowCount - 1 do
-            begin
-              Task := Self.Make(Boolean(FieldAsInteger(1)));
-              Task.Id := FieldAsInteger(0);
-              Task.TaskType := TTaskType(FieldAsInteger(2));
-              Task.SetTime(TTimeType(FieldAsInteger(3)), TTimeRec(FieldAsInteger(4)));
-              Task.Content := FieldAsString(5);
-              Task.Param := FieldAsString(6);
-              Task.ExecNum := FieldAsInteger(7);
-              Next;
-            end;
-        finally
-          FItems.EndUpdate;
-        end;
+        { 分类 }
+        FClasses.LoadClass;
+
+        { 任务 }
+        Table := TSQLiteTable.Create(FTaskDB, SQL_SELECT_TASKS, []);
+        with Table do
+          for i := 0 to RowCount - 1 do
+          begin
+            Task := Self.NewTask(False);
+            Task.Active := Boolean(FieldAsInteger(0));
+            Task.Id := FieldAsInteger(1);
+            Task.CId := FieldAsInteger(2);
+            Task.TaskType := TTaskType(FieldAsInteger(3));
+            Task.TimeType := TTimeType(FieldAsInteger(4));
+            Task.TimeRec := TTimeRec(FieldAsInteger(5));
+            Task.Content := FieldAsString(6);
+            Task.Param := FieldAsString(7);
+            Task.ExecNum := FieldAsInteger(8);
+            Task.TmpExecNum := Boolean(FieldAsInteger(9));
+            Task.ResetLoop;
+            Next;
+          end;
       finally
         Table.Free;
       end;
+
+      { 默认显示 }
+      FClasses.Tv.Items[0].Selected := True;
     end;
   except
     on E: Exception do
     begin
       if MessageBox(0, PChar('读取数据库 ' + sDbPath + ' 异常(' + E.Message + ')！'#13#10#13#10
-        + '可以尝试删除此文件.是否要向作者反馈此信息?'), '提示',
+        + '是否尝试修复？'), '提示',
         MB_ICONWARNING or MB_YESNO) = ID_YES then
-        ShellExecute(0, nil, PChar('http://www.yryz.net?f=OnTimer_Help'), nil, nil, SW_SHOW);
+      begin
+        try
+          TDataBase.AutoUpdate;
+        except
+          MessageBox(0, PChar('修复出现异常！'), '提示',
+            MB_ICONWARNING);
+        end;
+      end
+      else if MessageBox(0, PChar('你可以尝试删除此文件！是否要向作者反馈此信息?'), '提示',
+        MB_ICONWARNING or MB_YESNO) = ID_YES then
+        ShellExecute(0, nil, PChar('http://www.yryz.net?f=OnTimer&e=' + THTTP.URLEnc(E.Message)), nil, nil, SW_SHOW);
 
       PostQuitMessage(0);               //退出
     end;
+  end;
+end;
+
+procedure TTaskMgr.LoadUI;
+var
+  i                 : Integer;
+  b                 : Boolean;
+begin
+  if FList.Count = 0 then
+    Exit;
+
+  FLv.Items.BeginUpdate;
+  try
+    for i := FList.Count - 1 downto 0 do //idx DESC
+      with TTask(FList[i]) do
+      begin
+        case taskClass of
+          tcAll:
+            b := True;
+
+          tcActive:
+            b := IsActive;
+
+          tcByType:
+            b := TaskType = TTaskType(nValue);
+
+          tcByClass:
+            b := CId = nValue;
+
+          tcNoneClass:
+            b := CId = nValue;
+        else
+          b := False;
+        end;
+
+        b := b and ((Keyword = '')
+          or (Pos(Keyword, Content) > 0) or (Pos(Keyword, Param) > 0));
+
+        if b then
+        begin
+          AssignUI(FLv.Items.Add);
+        end
+        else
+          AssignUI(nil);
+      end;
+  finally
+    FLv.Items.EndUpdate;
+  end;
+
+  UpdateTaskCount;
+end;
+
+function TTaskMgr.GetActiveTask: Integer;
+var
+  i                 : Integer;
+begin
+  Result := 0;
+  if FList.Count = 0 then
+    Exit;
+
+  for i := FList.Count - 1 downto 0 do
+    if TTask(FList[i]).IsActive then
+      Inc(Result);
+end;
+
+procedure TTaskMgr.UpdateTaskCount;
+begin
+  FClasses.FClassNode[tcStat].Text := IntToStr(FLv.Items.Count)
+    + '/' + IntToStr(FList.Count);
+end;
+
+function TTaskMgr.GetMaxIdx: Integer;
+var
+  Table             : TSQLiteTable;
+begin
+  try
+    Table := TSQLiteTable.Create(FTaskDB, SQL_SELECT_TASK_MAXIDX, []);
+    Result := Table.FieldAsInteger(0);
+  finally
+    Table.Free;
   end;
 end;
 
