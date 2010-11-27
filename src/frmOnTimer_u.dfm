@@ -56,6 +56,7 @@ object frmOnTimer: TfrmOnTimer
     DragMode = dmAutomatic
     GridLines = True
     MultiSelect = True
+    ReadOnly = True
     RowSelect = True
     SmallImages = il1
     TabOrder = 1
