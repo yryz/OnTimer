@@ -16,7 +16,7 @@ uses
 
 begin
   Application.Initialize;
-  Application.Title := 'HOU任务计划 v1.3a';
+  Application.Title := 'HOU任务计划 v1.3b';
   if FindCmdLineSwitch('h', ['/', '-'], True) then
     Application.ShowMainForm := False
   else if FindCmdLineSwitch('h-all', ['/', '-'], True) then

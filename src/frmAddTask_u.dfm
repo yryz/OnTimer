@@ -213,7 +213,11 @@ object frmAddTask: TfrmAddTask
       Font.Style = []
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       ParentFont = False
+      ParentShowHint = False
+      ShowHint = False
       TabOrder = 18
+      OnEnter = edtParamEnter
+      OnExit = mmoContentExit
     end
     object chkActive: TCheckBox
       Left = 298
@@ -417,6 +421,7 @@ object frmAddTask: TfrmAddTask
       ShowHint = True
       TabOrder = 17
       OnEnter = mmoContentEnter
+      OnExit = mmoContentExit
     end
   end
   object btnOk: TButton

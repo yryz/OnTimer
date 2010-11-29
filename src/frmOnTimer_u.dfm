@@ -50,7 +50,7 @@ object frmOnTimer: TfrmOnTimer
       end
       item
         Alignment = taCenter
-        Caption = #21097#20313
+        Caption = #27425#25968
         Width = 45
       end>
     DragMode = dmAutomatic
@@ -64,6 +64,7 @@ object frmOnTimer: TfrmOnTimer
     OnClick = lvTaskClick
     OnColumnClick = lvTaskColumnClick
     OnCompare = lvTaskCompare
+    OnDblClick = mniEditClick
     OnDragDrop = lvTaskDragDrop
     OnDragOver = lvTaskDragOver
     IgnoreCheck = True
@@ -106,6 +107,7 @@ object frmOnTimer: TfrmOnTimer
       TabOrder = 0
       Text = #25628#32034
       OnChange = edtSearchChange
+      OnKeyPress = edtSearchKeyPress
     end
   end
   object tmrOntimer: TTimer

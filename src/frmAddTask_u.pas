@@ -44,10 +44,13 @@ type
     procedure FormPaint(Sender: TObject);
     procedure chkWeekClick(Sender: TObject);
     procedure mmoContentEnter(Sender: TObject);
+    procedure edtParamEnter(Sender: TObject);
+    procedure mmoContentExit(Sender: TObject);
   private
     FTask: TTask;
     FToolTip: TToolTip;
     FContentTip: string;
+    FParamTip: string;
   public
     constructor Create(Task: TTask);
   end;
@@ -98,7 +101,6 @@ begin
     seExecNum.Value := Task.ExecNum;
     chkTmpExecNum.Checked := Task.TmpExecNum;
 
-    seExecNum.Enabled := True;
     case Task.TimeType of
       tmLoop, tmTime:
         begin
@@ -130,7 +132,6 @@ begin
 
       tmDateTime:
         begin
-          seExecNum.Enabled := False;
           edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat,
             TimeStampToDateTime(PTimeStamp(@Task.TimeRec)^));
         end;
@@ -149,7 +150,6 @@ begin
   end
   else                                  //Add
   begin
-    seExecNum.Enabled := False;
     edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat, now);
 
     if (SelNode <> nil) then
@@ -289,7 +289,6 @@ begin
   if not chkWeek.Enabled then
     chkWeek.Checked := False;
 
-  seExecNum.Enabled := True;
   if chkLoop.Checked then
   begin                                 { 循环 }
     edtTime.Text := '60';
@@ -317,7 +316,6 @@ begin
     end
     else
     begin                               { 日期 }
-      seExecNum.Enabled := False;
       edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat, now);
       edtTime.MaxLength := 19;
     end;
@@ -360,72 +358,63 @@ begin
   mmoContent.Enabled := not (tt in
     [ttShutdownSys, ttRebootSys, ttLogoutSys, ttLockSys, ttSuspendSys]);
 
+  if tt in [ttExec, ttParamExec, ttCmdExec] then
+    FParamTip := HIDE_PARAM_HEAD + ' 开头隐藏执行此任务!'
+  else
+    FParamTip := '';
+
+  if tt in [ttExec, ttParamExec, ttDownExec, ttKillProcess, ttWakeUp] then
+    FContentTip := '每行执行一次！'
+  else
+    FContentTip := '';
+
   s := '例如:'#13#10;
   case tt of
-    ttExec,
-      ttParamExec,
-      ttDownExec,
-      ttKillProcess,
-      ttWakeUp:
-      begin
-        FContentTip := '每行执行一次！';
-        case tt of
-          ttExec:
-            s := s
-              + 'http://www.yryz.net'#13#10
-              + 'd:\mp3\alarm.mp3';
+    ttExec:
+      s := s
+        + 'http://www.yryz.net'#13#10
+        + 'd:\mp3\alarm.mp3';
 
-          ttParamExec:
-            s := s
-              + 'ping 127.0.0.1'#13#10
-              + 'shutdown -s';
+    ttParamExec:
+      s := s
+        + 'ping 127.0.0.1'#13#10
+        + 'shutdown -s';
 
-          ttDownExec:
-            s := s
-              + 'http://im.qq.com/qq.exe';
+    ttDownExec:
+      s := s
+        + 'http://im.qq.com/qq.exe';
 
-          ttKillProcess:
-            s := s
-              + 'qq.exe'#13#10
-              + 'cmd.exe';
+    ttKillProcess:
+      s := s
+        + 'qq.exe'#13#10
+        + 'cmd.exe';
 
-          ttWakeUp:
-            s := s
-              + '00-e0-4d-df-7e-8a'#13#10
-              + '00-e0-4d-df-88-1c';
-        end;
-      end;
+    ttWakeUp:
+      s := s
+        + '00-e0-4d-df-7e-8a'#13#10
+        + '00-e0-4d-df-88-1c';
 
-    ttCmdExec,
-      ttMsgTip,
-      ttSendEmail,
-      ttSendKey:
-      begin
-        FContentTip := '';
-        case tt of
-          ttCmdExec:
-            s := s
-              + 'del c:\*.log'#13#10
-              + 'mkdir c:\s'#13#10
-              + 'systeminfo > c:\s\s.txt';
+    ttCmdExec:
+      s := s
+        + 'del c:\*.log'#13#10
+        + 'mkdir c:\s'#13#10
+        + 'systeminfo > c:\s\s.txt';
 
-          ttMsgTip:
-            s := s
-              + '该睡觉了~~！';
+    ttMsgTip:
+      s := s
+        + '该睡觉了~~！';
 
-          ttSendEmail:
-            s := s
-              + '文件'#13#10
-              + 'c:\s\s.txt'#13#10
-              + '文字'#13#10
-              + 'SMTP Test!';
+    ttSendEmail:
+      s := s
+        + '文件'#13#10
+        + 'c:\s\s.txt'#13#10
+        + '文字'#13#10
+        + 'SMTP Test!';
 
-          ttSendKey:
-            s := s
-              + '^%z'#13#10
-              + '模拟 Ctrl+Alt+Z';
-        end;
-      end;
+    ttSendKey:
+      s := s
+        + '^%z'#13#10
+        + '模拟 Ctrl+Alt+Z';
 
     ttShutdownSys,
       ttRebootSys,
@@ -461,6 +450,17 @@ procedure TfrmAddTask.mmoContentEnter(Sender: TObject);
 begin
   if Self.Showing and (FContentTip <> '') then
     FToolTip.Popup(TWinControl(Sender).Handle, ttInformationIcon, '提示', FContentTip);
+end;
+
+procedure TfrmAddTask.edtParamEnter(Sender: TObject);
+begin
+  if Self.Showing and (FParamTip <> '') then
+    FToolTip.Popup(TWinControl(Sender).Handle, ttInformationIcon, '提示', FParamTip);
+end;
+
+procedure TfrmAddTask.mmoContentExit(Sender: TObject);
+begin
+  FToolTip.EndPopup;
 end;
 
 end.

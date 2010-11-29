@@ -144,7 +144,7 @@ begin
 
     { 设置样式 }
     SetWindowLong(FHandle, GWL_WNDPROC, Longint(MakeObjectInstance(WndProc)));
-    SetWindowPos(FHandle, 0, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE);
+    SetWindowPos(FHandle, 0, 0, 0, 0, 0, SWP_NOACTIVATE or SWP_NOMOVE or SWP_NOSIZE);
 
     { 画布 }
     FImage := TGPImage.Create(ImgPath);

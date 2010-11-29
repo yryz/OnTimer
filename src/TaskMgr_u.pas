@@ -42,6 +42,8 @@ const
   TASK_CLASS_IMG    : array[TTaskClass] of Integer =
     (0, 1, 2, 3, 4, 5);
 
+  HIDE_PARAM_HEAD   = '-h';
+
 const
   DATETIME_FORMAT_SETTINGS: TFormatSettings = (
     DateSeparator: '-';
@@ -86,22 +88,25 @@ type
     FTimeRec: TTimeRec;                 //设定日期、时间、星期、倒计时
     FParam: string;
     FContent: string;
-
-    FLoopTime: DWORD;                   //倒计时计数
-
     FTmpExecNum: Boolean;               //临时执行计数
+
+    procedure SetExecNum(const Value: Integer);
   protected
+    FLoopTime: DWORD;                   //倒计时计数
+    FNrExec: Integer;                   //已执行次数
     function DecLoop: Integer;          //调用一次，减一秒
-    function DecExecNum: Integer;
+    function IncExec: Integer;
+    procedure UpdateNrExecUI;
   public
     constructor Create(AOwner: TTaskMgr; bNew: Boolean);
     destructor Destroy; override;
+
+    function ShowCmd(): Integer;
     procedure Execute;
 
-    function CheckTime(dateTime: TDateTime): Integer; //< 0 过期; 0 已到; > 0 未到
+    function CheckTime(dateTime: TDateTime; onlyCheck: Boolean): Integer; //< 0 无效; 0 已到; > 0 未到
 
     function IsWeek(): Boolean;
-    function IsActive(): Boolean;
     procedure AssignUI(Item: TListItem); //绑定UI
     procedure ResetLoop();
 
@@ -117,7 +122,7 @@ type
     property Id: Integer read FId write FId;
     property CId: Integer read FCId write FCId;
     property Active: Boolean read FActive write FActive;
-    property ExecNum: Integer read FExecNum write FExecNum;
+    property ExecNum: Integer read FExecNum write SetExecNum;
     property TaskType: TTaskType read FTaskType write FTaskType;
     property TimeType: TTimeType read FTimeType write FTimeType;
     property TimeRec: TTimeRec read FTimeRec write FTimeRec;
@@ -226,6 +231,14 @@ begin
   inherited;
 end;
 
+function TTask.ShowCmd(): Integer;
+begin
+  if StrLComp(PChar(FParam), HIDE_PARAM_HEAD, Length(HIDE_PARAM_HEAD)) = 0 then
+    Result := SW_HIDE
+  else
+    Result := SW_SHOW;
+end;
+
 procedure TTask.Execute;
 var
   i                 : Integer;
@@ -248,9 +261,9 @@ begin
           sContent := sList.Strings[i];
           case FTaskType of
             ttExec:
-              ShellExecute(0, nil, PChar(sContent), nil, PChar(GetCurrentDir), SW_SHOW); //运行
+              ShellExecute(0, nil, PChar(sContent), nil, PChar(GetCurrentDir), ShowCmd); //运行
             ttParamExec:
-              WinExec(PChar(sContent), SW_SHOW);
+              WinExec(PChar(sContent), ShowCmd);
             ttDownExec:
               CloseHandle(BeginThread(nil, 0, @DownloadExec, PChar(sContent), 0, dwID));
             ttKillProcess:
@@ -268,7 +281,7 @@ begin
     ttCmdExec:
       begin
         sContent := StringReplace(FContent, sLineBreak, '&', [rfReplaceAll]);
-        WinExec(PChar('cmd /c ' + sContent), SW_SHOW);
+        WinExec(PChar('cmd /c ' + sContent), ShowCmd);
       end;
 
     ttSendKey:
@@ -312,7 +325,7 @@ begin
       end;
   end;
 
-  Self.DecExecNum;
+  Self.IncExec;
 end;
 
 function TTask.DecLoop;
@@ -326,25 +339,22 @@ begin
     FLoopTime := FTimeRec.TimeOrLoop;
 end;
 
-function TTask.DecExecNum;
+function TTask.IncExec;
 var
   sql               : string;
   Table             : TSQLiteTable;
+  nLast             : Integer;
 begin
-  if FExecNum > 0 then
+  Inc(FNrExec);
+  nLast := FExecNum - FNrExec;
+
+  UpdateNrExecUI;
+  if nLast >= 0 then
   begin
-    Dec(FExecNum);
-
-    if Assigned(FItemUI) then
-    begin
-      FItemUI.ImageIndex := 1;
-      FItemUI.SubItems.Strings[3] := IntToStr(FExecNum);
-    end;
-
     if not FTmpExecNum then             //记录次数
       try
         sql := SQL_UPDATE_TASK_EXECNUM + IntToStr(FId);
-        Table := TSQLiteTable.Create(FOwner.FTaskDB, sql, [FExecNum]);
+        Table := TSQLiteTable.Create(FOwner.FTaskDB, sql, [nLast]);
       finally
         Table.Free;
       end;
@@ -431,16 +441,22 @@ begin
     Add(TASK_TYPE_STR[FTaskType]);      //类型
     Add(FContent);                      //内容
     Add(FParam);                        //附加参数
-    Add(IntToStr(FExecNum));            //可执行次数
+    Add('');                            //可执行次数
   end;
   ItemUI.Data := Self;
+
+  UpdateNrExecUI;
 end;
 
-function TTask.CheckTime(dateTime: TDateTime): Integer;
+function TTask.CheckTime(dateTime: TDateTime; onlyCheck: Boolean): Integer;
 var
   timeStamp         : TTimeStamp;
 begin
   Result := -1;
+
+  if not FActive or (FExecNum <= FNrExec) then
+    Exit;
+
   timeStamp := DateTimeToTimeStamp(dateTime);
   case FTimeType of
     tmDateTime:
@@ -449,43 +465,41 @@ begin
         if Result = 0 then
           Result := DWORD(FTimeRec.TimeOrLoop div MSecsPerSec)
             - DWORD(timeStamp.Time div MSecsPerSec);
-
-        if Result < 0 then              //过期？
-          Exit;
       end;
 
-    tmMonthly:
-      begin                             //每月
-        Result := DWORD(FTimeRec.DateOrWeek) - DayOf(dateTime);
-        if Result = 0 then
-          Result := DWORD(FTimeRec.TimeOrLoop div MSecsPerSec)
-            - DWORD(timeStamp.Time div MSecsPerSec);
-      end;
-
-    tmLoop, tmTime:
+    tmTime, tmLoop, tmMonthly:
       begin
-        if not IsWeek
-          or (TWeekOfDay(timeStamp.Date mod 7 + 1) in
-          PWeekSet(@FTimeRec.DateOrWeek)^) then
+        if onlyCheck then               //只检测是否过期
         begin
-          if FTimeType = tmLoop then    //倒计时秒
-            Result := DecLoop
-          else                          //时间
-            Result := DWORD(FTimeRec.TimeOrLoop div MSecsPerSec)
-              - DWORD(timeStamp.Time div MSecsPerSec);
+          Result := MaxInt;
+          Exit;
         end;
+
+        case FTimeType of
+          tmMonthly:
+            begin                       //每月
+              Result := DWORD(FTimeRec.DateOrWeek) - DayOf(dateTime);
+              if Result = 0 then
+                Result := DWORD(FTimeRec.TimeOrLoop div MSecsPerSec)
+                  - DWORD(timeStamp.Time div MSecsPerSec);
+            end;
+
+          tmLoop, tmTime:
+            begin
+              if not IsWeek
+                or (TWeekOfDay(timeStamp.Date mod 7 + 1) in
+                PWeekSet(@FTimeRec.DateOrWeek)^) then
+              begin
+                if FTimeType = tmLoop then //倒计时秒
+                  Result := DecLoop
+                else                    //时间
+                  Result := DWORD(FTimeRec.TimeOrLoop div MSecsPerSec)
+                    - DWORD(timeStamp.Time div MSecsPerSec);
+              end;
+            end;
+        end;                            //end case
       end;
-  end;
-
-  if Result <> 0 then
-    Result := MaxInt;
-end;
-
-function TTask.IsActive: Boolean;
-begin
-  Result := FActive and (FExecNum > 0);
-  if FTimeType <> tmLoop then           // 防止CheckTime() call DecLoop()
-    Result := Result and (CheckTime(Now) >= 0); //时间判断
+  end;                                  //end case
 end;
 
 function TTask.Delete;
@@ -798,6 +812,32 @@ begin
   FLoopTime := FTimeRec.TimeOrLoop;
 end;
 
+procedure TTask.SetExecNum(const Value: Integer);
+begin
+  FNrExec := 0;
+  FExecNum := Value;
+end;
+
+procedure TTask.UpdateNrExecUI;
+var
+  s                 : string;
+begin
+  if Assigned(FItemUI) then
+  begin
+    if FNrExec > 0 then
+      FItemUI.ImageIndex := 1
+    else
+      FItemUI.ImageIndex := 0;
+
+    if FTmpExecNum then
+      s := '/'
+    else
+      s := '-';
+
+    FItemUI.SubItems.Strings[3] := IntToStr(FNrExec) + s + IntToStr(FExecNum);
+  end;
+end;
+
 { TTaskMgr }
 
 constructor TTaskMgr.Create;
@@ -874,10 +914,8 @@ begin
   for i := 0 to FList.Count - 1 do
   begin
     Task := FList[i];
-    if not Task.Active or (Task.ExecNum < 1) then
-      Continue;                         //不可执行
 
-    if Task.CheckTime(dateTime) <> 0 then
+    if Task.CheckTime(dateTime, False) <> 0 then
       Continue;
 
     Task.Execute;
@@ -995,7 +1033,7 @@ begin
             b := True;
 
           tcActive:
-            b := IsActive;
+            b := CheckTime(Now, True) >= 0;
 
           tcByType:
             b := TaskType = TTaskType(nValue);
@@ -1035,7 +1073,7 @@ begin
     Exit;
 
   for i := FList.Count - 1 downto 0 do
-    if TTask(FList[i]).IsActive then
+    if TTask(FList[i]).CheckTime(Now, True) >= 0 then
       Inc(Result);
 end;
 

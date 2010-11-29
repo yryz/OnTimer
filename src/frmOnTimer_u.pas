@@ -85,6 +85,7 @@ type
     procedure tvClassDragOver(Sender, Source: TObject; X, Y: Integer;
       State: TDragState; var Accept: Boolean);
     procedure tvClassDragDrop(Sender, Source: TObject; X, Y: Integer);
+    procedure edtSearchKeyPress(Sender: TObject; var Key: Char);
   private
     procedure ActiveWindows;
     procedure SysEvent(var Message: Tmessage); message WM_SYSCOMMAND;
@@ -552,14 +553,14 @@ begin
 
     Item2 := lvTask.Items[Item.Index - 1];
   end
-  else if Sender = mniMoveUp then
+  else if Sender = mniMoveDown then
   begin
     if Item.Index = lvTask.Items.Count - 1 then
       Exit;
 
     Item2 := lvTask.Items[Item.Index + 1];
   end
-  else if Sender = mniMoveUp then
+  else if Sender = mniMoveBottom then
   begin
     if Item.Index = lvTask.Items.Count - 1 then
       Exit;
@@ -567,7 +568,7 @@ begin
     Item2 := lvTask.Items[lvTask.Items.Count - 1];
   end
   else
-    Item2 := nil;
+    Assert(False);
 
   TaskUpdateIndex(Item, Item2);
 end;
@@ -616,6 +617,12 @@ begin
       Caption := 'πÈ¿‡µΩ: ' + Node.Text;
     end;
   end;
+end;
+
+procedure TfrmOnTimer.edtSearchKeyPress(Sender: TObject; var Key: Char);
+begin
+  if Key = #13 then
+    edtSearchChange(nil);
 end;
 
 initialization
