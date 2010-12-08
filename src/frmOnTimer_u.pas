@@ -86,6 +86,8 @@ type
       State: TDragState; var Accept: Boolean);
     procedure tvClassDragDrop(Sender, Source: TObject; X, Y: Integer);
     procedure edtSearchKeyPress(Sender: TObject; var Key: Char);
+    procedure lvTaskCustomDrawItem(Sender: TCustomListView;
+      Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
   private
     procedure ActiveWindows;
     procedure SysEvent(var Message: Tmessage); message WM_SYSCOMMAND;
@@ -623,6 +625,15 @@ procedure TfrmOnTimer.edtSearchKeyPress(Sender: TObject; var Key: Char);
 begin
   if Key = #13 then
     edtSearchChange(nil);
+end;
+
+procedure TfrmOnTimer.lvTaskCustomDrawItem(Sender: TCustomListView;
+  Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  if Item.Index mod 2 <> 0 then
+    Sender.Canvas.Brush.Color := $00FFFEFA
+  else
+    Sender.Canvas.Brush.Color := clWindow;
 end;
 
 initialization

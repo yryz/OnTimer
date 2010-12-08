@@ -202,13 +202,9 @@ const
   MAX_LOOP_VALUE    = $3FFFFF;          //DOUBLE_MAGIC 只能处理这 23位
 
 function FloatToInt23(Value: double): Integer;
-
-function SetSuspendState(Hibernate, ForceCritical, DisableWakeEvent: Boolean): Boolean;
-stdcall; external 'PowrProf.dll'
-
 implementation
 uses
-  sndkey32, FuncLib, Proc_u, PopTooltip_u;
+  sndkey32, FuncLib, Proc_u, PopTooltip_u, frmCountdown_u;
 
 function FloatToInt23(Value: double): Integer;
 var
@@ -297,31 +293,30 @@ begin
       TPopTooltip.ShowMsg(FContent,
         ExtractFilePath(ParamStr(0)) + 'OnTimer.jpg', INFINITE);
 
-    ttShutdownSys:
+    ttShutdownSys,
+      ttRebootSys,
+      ttLogoutSys,
+      ttLockSys,
+      ttSuspendSys:
       begin
-        SetPrivilege('SeShutdownPrivilege');
-        ExitWindowsEX(EWX_SHUTDOWN or EWX_FORCE, 0); {关机}
-      end;
+        TryStrToInt(FContent, i);
+        sContent := Copy(FContent, Length(IntToStr(i)) + 1, MaxInt);
+        case FTaskType of
+          ttShutdownSys:
+            TfrmCountdown.Countdown(stShutdown, i, sContent);
 
-    ttRebootSys:
-      begin
-        SetPrivilege('SeShutdownPrivilege');
-        ExitWindowsEX(EWX_REBOOT or EWX_FORCE, 0); {重启}
-      end;
+          ttRebootSys:
+            TfrmCountdown.Countdown(stReboot, i, sContent);
 
-    ttLogoutSys:
-      begin
-        SetPrivilege('SeShutdownPrivilege');
-        ExitWindowsEX(EWX_LOGOFF or EWX_FORCE, 0); {注销}
-      end;
+          ttLogoutSys:
+            TfrmCountdown.Countdown(stLogout, i, sContent);
 
-    ttLockSys:
-      LockWorkStation;
+          ttLockSys:
+            TfrmCountdown.Countdown(stLock, i, sContent);
 
-    ttSuspendSys:
-      begin
-        SetPrivilege('SeShutdownPrivilege');
-        SetSuspendState(False, False, False); {待机}
+          ttSuspendSys:
+            TfrmCountdown.Countdown(stSuspend, i, sContent);
+        end;
       end;
   end;
 
@@ -545,7 +540,7 @@ begin
     begin
       FNew := False;
       FId := FOwner.FTaskDB.GetLastInsertRowID;
-      UpdateIndex(FOwner.GetMaxIdx);
+      UpdateIndex(FOwner.GetMaxIdx + 1);
     end;
   finally
     Table.Free;

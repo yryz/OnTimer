@@ -22,7 +22,6 @@ type
     lbl1: TLabel;
     lblParam: TLabel;
     edtParam: TEdit;
-    chkActive: TCheckBox;
     chkWeek: TCheckBox;
     chkMon: TCheckBox;
     chkTue: TCheckBox;
@@ -36,6 +35,7 @@ type
     lbl2: TLabel;
     cbbClass: TComboBox;
     mmoContent: TMemo;
+    chkActive: TCheckBox;
     procedure btnOkClick(Sender: TObject);
     procedure chkEveryDayClick(Sender: TObject);
     procedure cbbTypeChange(Sender: TObject);
@@ -68,14 +68,16 @@ var
   i                 : Integer;
   weekSet           : TWeekSet;
 
+  SelItem           : TListItem;
   SelNode           : TTreeNode;
 begin
   inherited Create(Application);
   FTask := Task;
 
   FToolTip := TToolTip.Create(Self);
-  FToolTip.Interval := 3000;
+  FToolTip.Interval := 5000;
 
+  SelItem := g_TaskMgr.Lv.Selected;
   SelNode := g_TaskMgr.Classes.Tv.Selected;
 
   //类型
@@ -151,6 +153,13 @@ begin
   else                                  //Add
   begin
     edtTime.Text := FormatDateTime(DATETIME_FORMAT_SETTINGS.LongDateFormat, now);
+
+    //Default
+    if SelItem <> nil then
+    begin
+      cbbType.ItemIndex := Integer(TTask(SelItem.Data).TaskType);
+      cbbClass.ItemIndex := cbbClass.Items.IndexOfObject(TObject(TTask(SelItem.Data).CId));
+    end;
 
     if (SelNode <> nil) then
       if (SelNode.Parent = g_TaskMgr.Classes.ClassNode[tcByType]) then //按类型
@@ -355,9 +364,6 @@ begin
   else
     lblParam.Caption := '备注:';
 
-  mmoContent.Enabled := not (tt in
-    [ttShutdownSys, ttRebootSys, ttLogoutSys, ttLockSys, ttSuspendSys]);
-
   if tt in [ttExec, ttParamExec, ttCmdExec] then
     FParamTip := HIDE_PARAM_HEAD + ' 开头隐藏执行此任务!'
   else
@@ -365,6 +371,9 @@ begin
 
   if tt in [ttExec, ttParamExec, ttDownExec, ttKillProcess, ttWakeUp] then
     FContentTip := '每行执行一次！'
+  else if tt in [ttShutdownSys, ttRebootSys, ttLogoutSys, ttLockSys,
+    ttSuspendSys] then
+    FContentTip := '开头为数字，执行时提示并等待n秒'
   else
     FContentTip := '';
 
@@ -421,9 +430,8 @@ begin
       ttLogoutSys,
       ttLockSys,
       ttSuspendSys:
-      FContentTip := '无内容！';
-  else
-    FContentTip := '此类型无提示.';
+      s := s
+        + '30秒倒计时...';
   end;
 
   mmoContent.Hint := s;

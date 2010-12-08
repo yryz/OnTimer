@@ -10,13 +10,14 @@ uses
   frmAbout_u in 'frmAbout_u.pas' {frmAbout},
   TaskMgr_u in 'TaskMgr_u.pas',
   TooltipUtil in 'TooltipUtil.pas',
-  DB_u in 'DB_u.pas';
+  DB_u in 'DB_u.pas',
+  frmCountdown_u in 'frmCountdown_u.pas' {frmCountdown};
 
 {$R *.res}
 
 begin
   Application.Initialize;
-  Application.Title := 'HOU任务计划 v1.3b';
+  Application.Title := 'HOU任务计划 v1.3c';
   if FindCmdLineSwitch('h', ['/', '-'], True) then
     Application.ShowMainForm := False
   else if FindCmdLineSwitch('h-all', ['/', '-'], True) then

@@ -131,7 +131,7 @@ object frmAddTask: TfrmAddTask
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       ItemHeight = 12
       ParentFont = False
-      TabOrder = 1
+      TabOrder = 0
       OnChange = cbbTypeChange
     end
     object seExecNum: TSpinEdit
@@ -151,7 +151,7 @@ object frmAddTask: TfrmAddTask
       ParentFont = False
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 2
+      TabOrder = 1
       Value = 1
     end
     object edtTime: TEdit
@@ -169,7 +169,7 @@ object frmAddTask: TfrmAddTask
       ParentFont = False
       ParentShowHint = False
       ShowHint = False
-      TabOrder = 4
+      TabOrder = 3
     end
     object chkEveryDay: TCheckBox
       Left = 180
@@ -183,7 +183,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = 'MS Sans Serif'
       Font.Style = []
       ParentFont = False
-      TabOrder = 5
+      TabOrder = 4
       OnClick = chkEveryDayClick
     end
     object chkLoop: TCheckBox
@@ -198,7 +198,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = 'MS Sans Serif'
       Font.Style = []
       ParentFont = False
-      TabOrder = 7
+      TabOrder = 6
       OnClick = chkEveryDayClick
     end
     object edtParam: TEdit
@@ -215,28 +215,9 @@ object frmAddTask: TfrmAddTask
       ParentFont = False
       ParentShowHint = False
       ShowHint = False
-      TabOrder = 18
+      TabOrder = 17
       OnEnter = edtParamEnter
       OnExit = mmoContentExit
-    end
-    object chkActive: TCheckBox
-      Left = 298
-      Top = -1
-      Width = 75
-      Height = 17
-      Hint = #28155#21152#21518#21363#29983#25928
-      Caption = #28608#27963#20219#21153
-      Checked = True
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -12
-      Font.Name = #23435#20307
-      Font.Style = []
-      ParentFont = False
-      ParentShowHint = False
-      ShowHint = True
-      State = cbChecked
-      TabOrder = 0
     end
     object chkWeek: TCheckBox
       Left = 48
@@ -251,7 +232,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = 'MS Sans Serif'
       Font.Style = []
       ParentFont = False
-      TabOrder = 8
+      TabOrder = 7
       OnClick = chkWeekClick
     end
     object chkMon: TCheckBox
@@ -267,7 +248,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = #23435#20307
       Font.Style = []
       ParentFont = False
-      TabOrder = 9
+      TabOrder = 8
     end
     object chkTue: TCheckBox
       Left = 144
@@ -282,7 +263,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = #23435#20307
       Font.Style = []
       ParentFont = False
-      TabOrder = 10
+      TabOrder = 9
     end
     object chkWed: TCheckBox
       Left = 186
@@ -297,7 +278,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = #23435#20307
       Font.Style = []
       ParentFont = False
-      TabOrder = 11
+      TabOrder = 10
     end
     object chkThu: TCheckBox
       Left = 227
@@ -312,7 +293,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = #23435#20307
       Font.Style = []
       ParentFont = False
-      TabOrder = 12
+      TabOrder = 11
     end
     object chkFri: TCheckBox
       Left = 269
@@ -327,7 +308,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = #23435#20307
       Font.Style = []
       ParentFont = False
-      TabOrder = 13
+      TabOrder = 12
     end
     object chkSat: TCheckBox
       Left = 310
@@ -342,7 +323,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = #23435#20307
       Font.Style = []
       ParentFont = False
-      TabOrder = 14
+      TabOrder = 13
     end
     object chkSun: TCheckBox
       Left = 352
@@ -357,7 +338,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = #23435#20307
       Font.Style = []
       ParentFont = False
-      TabOrder = 15
+      TabOrder = 14
     end
     object chkTmpExecNum: TCheckBox
       Left = 262
@@ -376,7 +357,7 @@ object frmAddTask: TfrmAddTask
       ParentShowHint = False
       ShowHint = True
       State = cbChecked
-      TabOrder = 3
+      TabOrder = 2
     end
     object chkMonthly: TCheckBox
       Left = 228
@@ -390,7 +371,7 @@ object frmAddTask: TfrmAddTask
       Font.Name = 'MS Sans Serif'
       Font.Style = []
       ParentFont = False
-      TabOrder = 6
+      TabOrder = 5
       OnClick = chkEveryDayClick
     end
     object cbbClass: TComboBox
@@ -407,7 +388,7 @@ object frmAddTask: TfrmAddTask
       ImeName = #20013#25991' ('#31616#20307') - '#32654#24335#38190#30424
       ItemHeight = 12
       ParentFont = False
-      TabOrder = 16
+      TabOrder = 15
       OnChange = cbbTypeChange
     end
     object mmoContent: TMemo
@@ -419,22 +400,22 @@ object frmAddTask: TfrmAddTask
       ParentShowHint = False
       ScrollBars = ssVertical
       ShowHint = True
-      TabOrder = 17
+      TabOrder = 16
       OnEnter = mmoContentEnter
       OnExit = mmoContentExit
     end
   end
   object btnOk: TButton
-    Left = 68
+    Left = 152
     Top = 256
-    Width = 173
+    Width = 113
     Height = 24
     Caption = #30830#23450
     TabOrder = 1
     OnClick = btnOkClick
   end
   object btnCancel: TButton
-    Left = 256
+    Left = 288
     Top = 256
     Width = 102
     Height = 24
@@ -442,5 +423,24 @@ object frmAddTask: TfrmAddTask
     Caption = #21462#28040
     ModalResult = 2
     TabOrder = 2
+  end
+  object chkActive: TCheckBox
+    Left = 50
+    Top = 259
+    Width = 75
+    Height = 17
+    Hint = #28155#21152#21518#21363#29983#25928
+    Caption = #28608#27963#20219#21153
+    Checked = True
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -12
+    Font.Name = #23435#20307
+    Font.Style = []
+    ParentFont = False
+    ParentShowHint = False
+    ShowHint = True
+    State = cbChecked
+    TabOrder = 3
   end
 end

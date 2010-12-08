@@ -64,6 +64,7 @@ object frmOnTimer: TfrmOnTimer
     OnClick = lvTaskClick
     OnColumnClick = lvTaskColumnClick
     OnCompare = lvTaskCompare
+    OnCustomDrawItem = lvTaskCustomDrawItem
     OnDblClick = mniEditClick
     OnDragDrop = lvTaskDragDrop
     OnDragOver = lvTaskDragOver
