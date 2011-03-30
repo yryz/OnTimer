@@ -71,7 +71,8 @@ begin
   if g_Option.SmtpPass <> '' then
     edtPass.Text := '******';
 
-  chkAutoRun.Checked := Pos(ParamStr(0), RegReadStr(AUTO_RUN_HKEY, AUTO_RUN_KEY)) > 0;
+  chkAutoRun.Checked := Pos(ParamStr(0),
+    RegReadStr(HKEY_CURRENT_USER, AUTO_RUN_HKEY, AUTO_RUN_KEY)) > 0;
 end;
 
 procedure TfrmOption.FormPaint(Sender: TObject);
@@ -101,10 +102,12 @@ begin
   if Showing then
   begin
     if TCheckBox(Sender).Checked then
-      TCheckBox(Sender).Checked := RegWriteStr(AUTO_RUN_HKEY, AUTO_RUN_KEY,
+      TCheckBox(Sender).Checked := RegWriteStr(HKEY_CURRENT_USER,
+        AUTO_RUN_HKEY,
+        AUTO_RUN_KEY,
         PAnsiChar('"' + ParamStr(0) + '" /h'))
     else
-      RegDelValue(AUTO_RUN_HKEY, AUTO_RUN_KEY);
+      RegDelValue(HKEY_CURRENT_USER, AUTO_RUN_HKEY, AUTO_RUN_KEY);
   end;
 end;
 

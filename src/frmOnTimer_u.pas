@@ -186,6 +186,7 @@ begin
   edtSearch.Align := alTop;
   tmrOntimer.Enabled := True;
   lvTask.DoubleBuffered := True;        //∑¿÷π…¡À∏
+  tvClass.DoubleBuffered := True;
 
   SetHotKey(g_Option.ShortCut);
 end;
