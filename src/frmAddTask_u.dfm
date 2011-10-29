@@ -139,7 +139,7 @@ object frmAddTask: TfrmAddTask
       Top = 21
       Width = 65
       Height = 21
-      Hint = #25191#34892#27425#25968
+      Hint = #25191#34892#27425#25968', -1'#19981#38480
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -12
@@ -147,7 +147,7 @@ object frmAddTask: TfrmAddTask
       Font.Style = []
       MaxLength = 9
       MaxValue = 999999999
-      MinValue = 0
+      MinValue = -1
       ParentFont = False
       ParentShowHint = False
       ShowHint = True

@@ -337,22 +337,18 @@ end;
 function TTask.IncExec;
 var
   sql               : string;
-  Table             : TSQLiteTable;
   nLast             : Integer;
 begin
   Inc(FNrExec);
   nLast := FExecNum - FNrExec;
 
   UpdateNrExecUI;
-  if nLast >= 0 then
+
+  //记录次数
+  if not FTmpExecNum and (nLast >= 0) then
   begin
-    if not FTmpExecNum then             //记录次数
-      try
-        sql := SQL_UPDATE_TASK_EXECNUM + IntToStr(FId);
-        Table := TSQLiteTable.Create(FOwner.FTaskDB, sql, [nLast]);
-      finally
-        Table.Free;
-      end;
+    sql := SQL_UPDATE_TASK_EXECNUM + IntToStr(FId);
+    FOwner.FTaskDB.ExecSQL(sql, [nLast]);
   end;
   Result := FExecNum;
 end;
@@ -449,7 +445,7 @@ var
 begin
   Result := -1;
 
-  if not FActive or (FExecNum <= FNrExec) then
+  if not FActive or ((FExecNum > 0) and (FExecNum <= FNrExec)) then
     Exit;
 
   timeStamp := DateTimeToTimeStamp(dateTime);
@@ -759,7 +755,6 @@ end;
 function TTaskClasses.Update;
 var
   sql               : string;
-  Table             : TSQLiteTable;
 begin
   Result := id;
 
@@ -768,13 +763,9 @@ begin
   else
     sql := SQL_UPDATE_CLASS + IntToStr(id);
 
-  try
-    Table := TSQLiteTable.Create(FOwner.FTaskDB, sql, [idx, Name]);
-    if isAdd then
-      Result := FOwner.FTaskDB.GetLastInsertRowID;
-  finally
-    Table.Free;
-  end;
+  FOwner.FTaskDB.ExecSQL(sql, [idx, Name]);
+  if isAdd then
+    Result := FOwner.FTaskDB.GetLastInsertRowID;
 end;
 
 function TTaskClasses.Delete(id: Integer): Integer;
