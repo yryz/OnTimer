@@ -445,7 +445,7 @@ var
 begin
   Result := -1;
 
-  if not FActive or ((FExecNum > 0) and (FExecNum <= FNrExec)) then
+  if not FActive or ((FExecNum >= 0) and (FExecNum <= FNrExec)) then
     Exit;
 
   timeStamp := DateTimeToTimeStamp(dateTime);

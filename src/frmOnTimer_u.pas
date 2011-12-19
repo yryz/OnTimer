@@ -88,7 +88,7 @@ type
     procedure edtSearchKeyPress(Sender: TObject; var Key: Char);
     procedure lvTaskCustomDrawItem(Sender: TCustomListView;
       Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
-  private
+  protected
     procedure ActiveWindows;
     procedure SysEvent(var Message: Tmessage); message WM_SYSCOMMAND;
     procedure TrayEvent(var Message: Tmessage); message WM_ICON;
@@ -538,6 +538,7 @@ procedure TfrmOnTimer.mniMoveClick(Sender: TObject);
 var
   Item, Item2       : TListItem;
 begin
+  Item2 := nil;
   Item := lvTask.Selected;
   if Item = nil then
     Exit;
